@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Html } from './SafeHtml';
 import { RemotePlayerData } from '@/stores/useMultiplayerStore';
+import { FashionAvatar, type FashionAvatarRef } from './FashionAvatar';
 
 const _vTargetPos = new THREE.Vector3();
 
@@ -19,6 +20,7 @@ interface RemotePlayerProps {
 export default function RemotePlayer({ player }: RemotePlayerProps) {
   const groupRef = useRef<THREE.Group>(null);
   const meshGroupRef = useRef<THREE.Group>(null);
+  const avatarRef = useRef<FashionAvatarRef>(null);
   const leftArmRef = useRef<THREE.Mesh>(null);
   const rightArmRef = useRef<THREE.Mesh>(null);
   const leftLegRef = useRef<THREE.Group>(null);
@@ -53,37 +55,42 @@ export default function RemotePlayer({ player }: RemotePlayerProps) {
       meshGroupRef.current.rotation.y += diff * Math.min(1.0, delta * 14.0);
     }
 
+    const leftLeg = avatarRef.current?.leftLeg || leftLegRef.current;
+    const rightLeg = avatarRef.current?.rightLeg || rightLegRef.current;
+    const leftArm = avatarRef.current?.leftArm || leftArmRef.current;
+    const rightArm = avatarRef.current?.rightArm || rightArmRef.current;
+
     // 3. Hoạt ảnh bước chân khi di chuyển
     const isMoving = distSq > 0.002;
     if (isMoving) {
-      walkCycleRef.current += delta * 14;
-      const legSwing = Math.sin(walkCycleRef.current) * 0.45;
+      walkCycleRef.current += delta * 13;
+      const legSwing = Math.sin(walkCycleRef.current) * 0.52;
       const armSwing = Math.cos(walkCycleRef.current) * 0.45;
-      if (leftLegRef.current) leftLegRef.current.rotation.x = legSwing;
-      if (rightLegRef.current) rightLegRef.current.rotation.x = -legSwing;
-      if (leftArmRef.current) leftArmRef.current.rotation.x = -armSwing;
-      if (rightArmRef.current) rightArmRef.current.rotation.x = armSwing;
+      if (leftLeg) leftLeg.rotation.x = legSwing;
+      if (rightLeg) rightLeg.rotation.x = -legSwing;
+      if (leftArm) leftArm.rotation.x = -armSwing;
+      if (rightArm) rightArm.rotation.x = armSwing;
     } else {
-      if (leftLegRef.current) leftLegRef.current.rotation.x *= 0.8;
-      if (rightLegRef.current) rightLegRef.current.rotation.x *= 0.8;
+      if (leftLeg) leftLeg.rotation.x *= 0.8;
+      if (rightLeg) rightLeg.rotation.x *= 0.8;
 
       if (player.currentEmote === 'dance') {
         const danceCycle = state.clock.elapsedTime * 6;
         if (meshGroupRef.current) {
           meshGroupRef.current.position.y = Math.abs(Math.sin(danceCycle)) * 0.2;
         }
-        if (leftArmRef.current) leftArmRef.current.rotation.z = Math.sin(danceCycle) * 0.8;
-        if (rightArmRef.current) rightArmRef.current.rotation.z = -Math.sin(danceCycle) * 0.8;
+        if (leftArm) leftArm.rotation.z = Math.sin(danceCycle) * 0.8;
+        if (rightArm) rightArm.rotation.z = -Math.sin(danceCycle) * 0.8;
       } else if (player.currentEmote === 'wave') {
-        if (rightArmRef.current) {
-          rightArmRef.current.rotation.z =
-            Math.PI - 0.4 + Math.sin(state.clock.elapsedTime * 10) * 0.3;
+        if (rightArm) {
+          rightArm.rotation.x = -2.2 + Math.sin(state.clock.elapsedTime * 9) * 0.4;
+          rightArm.rotation.z = 0.3;
         }
       } else {
-        if (leftArmRef.current) leftArmRef.current.rotation.x *= 0.8;
-        if (rightArmRef.current) rightArmRef.current.rotation.x *= 0.8;
-        if (leftArmRef.current) leftArmRef.current.rotation.z *= 0.8;
-        if (rightArmRef.current) rightArmRef.current.rotation.z *= 0.8;
+        if (leftArm) leftArm.rotation.x *= 0.8;
+        if (rightArm) rightArm.rotation.x *= 0.8;
+        if (leftArm) leftArm.rotation.z *= 0.8;
+        if (rightArm) rightArm.rotation.z *= 0.8;
         if (meshGroupRef.current) meshGroupRef.current.position.y = 0;
       }
     }
@@ -94,7 +101,7 @@ export default function RemotePlayer({ player }: RemotePlayerProps) {
   return (
     <group ref={groupRef} position={[player.x, Math.max(0, player.y), player.z]}>
       {/* 1. Bong bóng chat 3D hoặc Nhãn tên người chơi nổi trên đầu */}
-      <Html position={[0, 1.9, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
+      <Html position={[0, 2.25, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
         <div
           style={{
             display: 'flex',
@@ -159,75 +166,14 @@ export default function RemotePlayer({ player }: RemotePlayerProps) {
         </div>
       </Html>
 
-      {/* 2. Mô hình Nhân vật Chibi Play Together của Người chơi khác */}
+      {/* 2. Mô hình Fashion Avatar 3D của Người chơi khác */}
       <group ref={meshGroupRef}>
-        {/* Bóng đổ tròn dưới chân */}
-        <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.42, 16]} />
-          <meshBasicMaterial color="#000000" opacity={0.3} transparent />
-        </mesh>
-
-        {/* Thân nhân vật */}
-        <mesh position={[0, 0.56, 0]} castShadow>
-          <capsuleGeometry args={[0.26, 0.36, 8, 16]} />
-          <meshStandardMaterial color={accentColor} roughness={0.3} />
-        </mesh>
-
-        {/* Đầu Chibi tròn */}
-        <mesh position={[0, 1.14, 0]} castShadow>
-          <sphereGeometry args={[0.36, 20, 20]} />
-          <meshStandardMaterial color="#fed7aa" roughness={0.5} />
-        </mesh>
-
-        {/* Mắt Anime */}
-        <mesh position={[-0.12, 1.18, 0.32]}>
-          <sphereGeometry args={[0.045, 10, 10]} />
-          <meshStandardMaterial color="#0f172a" />
-        </mesh>
-        <mesh position={[0.12, 1.18, 0.32]}>
-          <sphereGeometry args={[0.045, 10, 10]} />
-          <meshStandardMaterial color="#0f172a" />
-        </mesh>
-
-        {/* Mũ đội đầu */}
-        <group position={[0, 1.34, 0]}>
-          <mesh castShadow>
-            <sphereGeometry args={[0.38, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshStandardMaterial color={accentColor} roughness={0.4} />
-          </mesh>
-        </group>
-
-        {/* Hai tay */}
-        <mesh ref={leftArmRef} position={[-0.32, 0.58, 0]} castShadow>
-          <capsuleGeometry args={[0.08, 0.28, 6, 12]} />
-          <meshStandardMaterial color="#fed7aa" roughness={0.5} />
-        </mesh>
-        <mesh ref={rightArmRef} position={[0.32, 0.58, 0]} castShadow>
-          <capsuleGeometry args={[0.08, 0.28, 6, 12]} />
-          <meshStandardMaterial color="#fed7aa" roughness={0.5} />
-        </mesh>
-
-        {/* Hai chân */}
-        <group ref={leftLegRef} position={[-0.14, 0.26, 0]}>
-          <mesh castShadow>
-            <capsuleGeometry args={[0.09, 0.2, 6, 12]} />
-            <meshStandardMaterial color="#1e293b" />
-          </mesh>
-          <mesh position={[0, -0.16, 0.06]} castShadow>
-            <boxGeometry args={[0.18, 0.12, 0.26]} />
-            <meshStandardMaterial color="#f8fafc" />
-          </mesh>
-        </group>
-        <group ref={rightLegRef} position={[0.14, 0.26, 0]}>
-          <mesh castShadow>
-            <capsuleGeometry args={[0.09, 0.2, 6, 12]} />
-            <meshStandardMaterial color="#1e293b" />
-          </mesh>
-          <mesh position={[0, -0.16, 0.06]} castShadow>
-            <boxGeometry args={[0.18, 0.12, 0.26]} />
-            <meshStandardMaterial color="#f8fafc" />
-          </mesh>
-        </group>
+        <FashionAvatar
+          ref={avatarRef}
+          outfitColor={accentColor}
+          hatColor="#f59e0b"
+          scale={1.35}
+        />
 
         {/* Ván trượt Skateboard nếu người chơi đó đang lướt ván */}
         {player.isSkateboarding && (

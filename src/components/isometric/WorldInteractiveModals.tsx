@@ -1004,6 +1004,18 @@ export function ShopAndWorkModal({
   } | null>(null);
   const [busy, setBusy] = useState<boolean>(false);
 
+  // Tự động đóng modal sau khi trả lời xong (không cần bấm nút đón khách thủ công, quán tự điều phối khách)
+  useEffect(() => {
+    if (!workFeedback) return;
+    const timer = setTimeout(() => {
+      setWorkFeedback(null);
+      setSelectedOption('');
+      setEssayInput('');
+      onClose();
+    }, 2800);
+    return () => clearTimeout(timer);
+  }, [workFeedback, onClose]);
+
   useEffect(() => {
     if (shopId) {
       setActiveTab(isWorkingAsStaff ? initialTab : 'buy');
@@ -1524,58 +1536,66 @@ export function ShopAndWorkModal({
                 )}
 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1.5 }}>
-                  <Button
-                    variant={workFeedback ? 'contained' : 'outlined'}
-                    fullWidth={Boolean(workFeedback)}
-                    onClick={() => {
-                      setScenarioIdx((i) => i + 1);
-                      setSelectedOption('');
-                      setEssayInput('');
-                      setWorkFeedback(null);
-                    }}
-                    sx={{
-                      textTransform: 'none',
-                      fontWeight: 900,
-                      py: workFeedback ? 1.3 : 1,
-                      backgroundColor: workFeedback
-                        ? workFeedback.isCorrect
-                          ? '#10b981'
-                          : '#f59e0b'
-                        : 'transparent',
-                      color: workFeedback ? '#0f172a' : '#cbd5e1',
-                      borderColor: 'rgba(255,255,255,0.25)',
-                      '&:hover': {
-                        backgroundColor: workFeedback ? '#fbbf24' : 'rgba(255,255,255,0.08)',
-                      },
-                    }}
-                  >
-                    {workFeedback
-                      ? workFeedback.isCorrect
-                        ? '⏭️ Đón vị khách hàng NPC tiếp theo vào quầy'
-                        : '⏭️ Khách đã bỏ đi (Không mua nữa) — Đón vị khách tiếp theo!'
-                      : '⏭️ Bỏ qua & Đón khách tiếp theo'}
-                  </Button>
-
-                  {!workFeedback && (
+                  {workFeedback ? (
                     <Button
-                      type="submit"
                       variant="contained"
-                      disabled={
-                        busy ||
-                        (currentScenario.questionType === 'essay_fill'
-                          ? !essayInput.trim()
-                          : !selectedOption)
-                      }
+                      fullWidth
+                      onClick={() => {
+                        setWorkFeedback(null);
+                        setSelectedOption('');
+                        setEssayInput('');
+                        onClose();
+                      }}
                       sx={{
                         textTransform: 'none',
                         fontWeight: 900,
-                        px: 3,
-                        background: 'linear-gradient(135deg, #10b981, #059669)',
-                        color: '#ffffff',
+                        py: 1.3,
+                        backgroundColor: workFeedback.isCorrect ? '#10b981' : '#f59e0b',
+                        color: '#0f172a',
+                        '&:hover': {
+                          backgroundColor: workFeedback.isCorrect ? '#34d399' : '#fbbf24',
+                        },
                       }}
                     >
-                      💬 Phục Vụ Khách & Nhận Tiền Thưởng
+                      {workFeedback.isCorrect
+                        ? '✅ Phục vụ xong! Khách đang mang đồ ra bàn ngồi [Tự động quay lại]'
+                        : '🚪 Khách đã rời quán — Trở lại quầy đón khách [Tự động quay lại]'}
                     </Button>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outlined"
+                        onClick={onClose}
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 700,
+                          color: '#94a3b8',
+                          borderColor: 'rgba(255,255,255,0.2)',
+                        }}
+                      >
+                        Đóng
+                      </Button>
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        disabled={
+                          busy ||
+                          (currentScenario.questionType === 'essay_fill'
+                            ? !essayInput.trim()
+                            : !selectedOption)
+                        }
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 900,
+                          px: 3,
+                          background: 'linear-gradient(135deg, #10b981, #059669)',
+                          color: '#ffffff',
+                        }}
+                      >
+                        💬 Phục Vụ Khách & Nhận Tiền Thưởng
+                      </Button>
+                    </>
                   )}
                 </Box>
               </Box>

@@ -3,7 +3,6 @@
 import React, { useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { Html } from './SafeHtml';
 import useDayNightCycle from '@/stores/useDayNightCycle';
 
 export type VehicleType = 'sedan' | 'taxi' | 'bus' | 'police' | 'icecream' | 'truck';
@@ -337,27 +336,6 @@ function AutonomousVehicle({ route }: { route: VehicleRoute }) {
         <cylinderGeometry args={[0.32, 0.32, 0.24, 14]} />
         <meshStandardMaterial color="#1e293b" roughness={0.8} />
       </mesh>
-
-      {/* Nhãn tên phương tiện nhỏ gọn nếu có */}
-      {route.label && (
-        <Html position={[0, isBus ? 2.8 : 2.1, 0]} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
-          <div
-            style={{
-              padding: '2px 8px',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(15, 23, 42, 0.72)',
-              color: '#f8fafc',
-              fontSize: '9px',
-              fontWeight: 800,
-              whiteSpace: 'nowrap',
-              border: '1px solid rgba(255,255,255,0.2)',
-              fontFamily: 'system-ui, sans-serif',
-            }}
-          >
-            {route.label}
-          </div>
-        </Html>
-      )}
     </group>
   );
 }

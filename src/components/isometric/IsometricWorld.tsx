@@ -43,6 +43,9 @@ import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded';
 import CasinoRoundedIcon from '@mui/icons-material/CasinoRounded';
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 import PersonPinCircleRoundedIcon from '@mui/icons-material/PersonPinCircleRounded';
+import RotateLeftRoundedIcon from '@mui/icons-material/RotateLeftRounded';
+import RotateRightRoundedIcon from '@mui/icons-material/RotateRightRounded';
+import ExploreRoundedIcon from '@mui/icons-material/ExploreRounded';
 import confetti from 'canvas-confetti';
 
 import StreetLamp from './StreetLamp';
@@ -252,6 +255,7 @@ function PlayTogetherCityScene({
   insidePlotCode,
   forceCutawayRoof,
   onClickManageHouse,
+  cameraOrbitAngle,
 }: {
   onInteractNPC?: (npcId: string) => void;
   isFishing: boolean;
@@ -277,6 +281,7 @@ function PlayTogetherCityScene({
   insidePlotCode: string | null;
   forceCutawayRoof: boolean;
   onClickManageHouse: () => void;
+  cameraOrbitAngle?: number;
 }) {
   const remotePlayers = useMultiplayerStore((state) => state.remotePlayers);
   const skyBgColor = useDayNightCycle((state) => state.skyBgColor);
@@ -507,6 +512,7 @@ function PlayTogetherCityScene({
         hatColor={hatColor}
         currentEmote={currentEmote}
         teleportTarget={teleportTarget}
+        cameraOrbitAngle={cameraOrbitAngle}
         onNearFishingPier={onNearFishingPier}
         onNearPlayerHouse={onNearPlayerHouse}
         onEnterPlotInterior={onEnterPlotInterior}
@@ -614,6 +620,37 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
 
   // Trạng thái gameplay
   const [cameraZoom, setCameraZoom] = useState<number>(26);
+  const [cameraOrbitAngle, setCameraOrbitAngle] = useState<number>(Math.PI / 4);
+  const isDraggingCameraRef = useRef(false);
+  const dragStartXRef = useRef(0);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    // Xoay 360 độ khi kéo chuột phải (button 2), chuột giữa (button 1) hoặc giữ phím Shift/Alt
+    if (e.button === 2 || e.button === 1 || e.shiftKey || e.altKey) {
+      isDraggingCameraRef.current = true;
+      dragStartXRef.current = e.clientX;
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      } catch {}
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDraggingCameraRef.current) return;
+    const deltaX = e.clientX - dragStartXRef.current;
+    dragStartXRef.current = e.clientX;
+    setCameraOrbitAngle((prev) => prev + deltaX * 0.0075);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (isDraggingCameraRef.current) {
+      isDraggingCameraRef.current = false;
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {}
+    }
+  };
+
   const [isNearFishingPier, setIsNearFishingPier] = useState(false);
   const [isNearPlayerHouse, setIsNearPlayerHouse] = useState(false);
   const [isInsidePlayerHouse, setIsInsidePlayerHouse] = useState(false);
@@ -1099,7 +1136,13 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.code === 'KeyF' && !activeInteriorSpace) {
+      if (e.code === 'KeyQ') {
+        e.preventDefault();
+        setCameraOrbitAngle((prev) => prev - Math.PI / 12);
+      } else if (e.code === 'KeyR') {
+        e.preventDefault();
+        setCameraOrbitAngle((prev) => prev + Math.PI / 12);
+      } else if (e.code === 'KeyF' && !activeInteriorSpace) {
         e.preventDefault();
         toggleFishing();
       } else if (e.code === 'KeyE') {
@@ -1228,40 +1271,21 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
       onWheel={(e) => {
         setCameraZoom((prev) => Math.max(14, Math.min(45, prev - e.deltaY * 0.015)));
       }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onContextMenu={(e) => e.preventDefault()}
       sx={{
         position: 'relative',
         width: '100%',
         height: '100%',
         minHeight: '620px',
         overflow: 'hidden',
+        userSelect: 'none',
+        cursor: isDraggingCameraRef.current ? 'grabbing' : 'grab',
       }}
     >
       {/* ================================================================= */}
-      {/* 1. HƯỚNG DẪN THAO TÁC GAMEPLAY HUD Ở GÓC TRÊN TRÁI                */}
-      {/* ================================================================= */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: 14,
-          left: 14,
-          zIndex: 20,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.2,
-          p: '7px 14px',
-          borderRadius: 3,
-          backgroundColor: 'rgba(15, 23, 42, 0.85)',
-          backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255, 255, 255, 0.14)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-        }}
-      >
-        <SportsEsportsRoundedIcon sx={{ color: '#38bdf8', fontSize: 20 }} />
-        <Typography variant="caption" sx={{ color: '#cbd5e1', fontWeight: 600 }}>
-          <strong>WASD</strong>: Di chuyển • <strong>Shift</strong>: Ván trượt 🛹 • <strong>Space</strong>: Nhảy • <strong>[E]</strong>: Hội thoại • <strong>Con lăn</strong>: Thu/Phóng
-        </Typography>
-      </Box>
-
       {/* ================================================================= */}
       {/* 2. DANH SÁCH NGƯỜI CHƠI ĐANG ONLINE & GẶP NHAU TỨC THÌ           */}
       {/* ================================================================= */}
@@ -1608,48 +1632,6 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
         </Box>
       ) : (
         <>
-          {/* KHI ĐANG ĐỨNG TRƯỚC CỬA NHÀ NGOÀI THÀNH PHỐ: BƯỚC VÀO CỬA ĐỂ ĐI VÀO KHÔNG GIAN NHÀ */}
-          {(isNearPlayerHouse || insidePlotCode) && !isFishing && (
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 60,
-                left: 14,
-                zIndex: 25,
-                display: 'flex',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: 1,
-                p: '8px 14px',
-                borderRadius: 3,
-                background: 'linear-gradient(135deg, rgba(185, 28, 28, 0.92), rgba(234, 88, 12, 0.92))',
-                border: '1.5px solid #fef08a',
-                boxShadow: '0 8px 28px rgba(185, 28, 28, 0.45)',
-              }}
-            >
-              <HomeWorkRoundedIcon sx={{ color: '#fef08a', fontSize: 20 }} />
-              <Typography variant="caption" sx={{ color: '#ffffff', fontWeight: 800 }}>
-                🏡 Đang đứng trước cổng {houseTitle} ({myPlot.tenLoDat}) — Hãy đi bộ vào cửa chính!
-              </Typography>
-              <Button
-                size="small"
-                variant="contained"
-                onClick={() => handleEnterHouseSpace(insidePlotCode || myPlot.maLoDat)}
-                sx={{
-                  height: 24,
-                  fontSize: '0.7rem',
-                  fontWeight: 900,
-                  textTransform: 'none',
-                  backgroundColor: '#fef08a',
-                  color: '#7c2d12',
-                  '&:hover': { backgroundColor: '#fde047' },
-                }}
-              >
-                🚪 Bước Vào Không Gian Nhà [Phím E]
-              </Button>
-            </Box>
-          )}
-
           {/* KHI ĐANG ĐỨNG TRƯỚC CỬA 1 TRONG 4 QUÁN NGOÀI ĐƯỜNG: BƯỚC VÀO CỬA ĐỂ ĐI VÀO KHÔNG GIAN QUÁN */}
           {nearShopVenue && !isFishing && (
             <Box
@@ -1952,6 +1934,38 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
             <ZoomOutRoundedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
+
+        <Box sx={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.12)', my: 0.2 }} />
+
+        <Tooltip title="Xoay bản đồ 360° sang trái (Phím Q hoặc Kéo chuột phải)" placement="left">
+          <IconButton
+            size="small"
+            onClick={() => setCameraOrbitAngle((prev) => prev - Math.PI / 6)}
+            sx={{ color: '#cbd5e1', '&:hover': { color: '#38bdf8' } }}
+          >
+            <RotateLeftRoundedIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title="Xoay bản đồ 360° sang phải (Phím R hoặc Kéo chuột phải)" placement="left">
+          <IconButton
+            size="small"
+            onClick={() => setCameraOrbitAngle((prev) => prev + Math.PI / 6)}
+            sx={{ color: '#cbd5e1', '&:hover': { color: '#38bdf8' } }}
+          >
+            <RotateRightRoundedIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title="Đặt lại góc nhìn chuẩn 45°" placement="left">
+          <IconButton
+            size="small"
+            onClick={() => setCameraOrbitAngle(Math.PI / 4)}
+            sx={{ color: '#f59e0b', '&:hover': { color: '#fbbf24' } }}
+          >
+            <ExploreRoundedIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {/* ================================================================= */}
@@ -2014,9 +2028,11 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
                 hatColor={hatColor}
                 currentEmote={currentEmote}
                 teleportTarget={teleportTarget}
+                cameraOrbitAngle={cameraOrbitAngle}
               />
             ) : (
               <PlayTogetherCityScene
+                cameraOrbitAngle={cameraOrbitAngle}
                 onInteractNPC={(npcId) => {
                   setActiveStreetNpcId(npcId);
                 }}

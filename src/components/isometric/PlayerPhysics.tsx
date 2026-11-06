@@ -14,6 +14,7 @@ import useMultiplayerStore from '@/stores/useMultiplayerStore';
 import { useAuth } from '@/context/AuthContext';
 import { HOUSE_PLOTS } from '@/data/housePlots';
 import type { ShopVenueId } from '@/data/worldGameplayData';
+import { FashionAvatar, type FashionAvatarRef } from './FashionAvatar';
 
 // ============================================================================
 // KHỞI TẠO BIẾN DÙNG CHUNG BÊN NGOÀI ĐỂ TRIỆT TIÊU GC SPIKE Ở 60-120 FPS
@@ -47,6 +48,7 @@ interface PlayerPhysicsProps {
   hatColor?: string;
   currentEmote?: string | null;
   teleportTarget?: { x: number; z: number; id: number } | null;
+  cameraOrbitAngle?: number;
   onNearFishingPier?: (isNear: boolean) => void;
   onNearPlayerHouse?: (isNear: boolean, isInside: boolean) => void;
   onEnterPlotInterior?: (plotCode: string | null) => void;
@@ -81,6 +83,7 @@ export default function PlayerPhysics({
   hatColor = '#f59e0b',
   currentEmote = null,
   teleportTarget = null,
+  cameraOrbitAngle = Math.PI / 4,
   onNearFishingPier,
   onNearPlayerHouse,
   onEnterPlotInterior,
@@ -93,6 +96,7 @@ export default function PlayerPhysics({
   const { user } = useAuth();
   const rigidBodyRef = useRef<RapierRigidBody>(null);
   const meshGroupRef = useRef<THREE.Group>(null);
+  const avatarRef = useRef<FashionAvatarRef>(null);
   const leftArmRef = useRef<THREE.Mesh>(null);
   const rightArmRef = useRef<THREE.Mesh>(null);
   const leftLegRef = useRef<THREE.Group>(null);
@@ -116,7 +120,7 @@ export default function PlayerPhysics({
     mountTimeRef.current = Date.now();
     doorTriggeredRef.current = false;
     if (isInteriorMode && rigidBodyRef.current) {
-      rigidBodyRef.current.setTranslation({ x: 0, y: 0.15, z: 7.5 }, true);
+      rigidBodyRef.current.setTranslation({ x: 0, y: 0.3, z: 7.5 }, true);
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
     } else if (!isInteriorMode && rigidBodyRef.current) {
       const targetX = teleportTarget ? teleportTarget.x : initialPosition[0];
@@ -339,8 +343,19 @@ export default function PlayerPhysics({
     if (isMoving) {
       _vInput.normalize();
 
-      // Xoay vector di chuyển 45 độ theo camera
-      _vMove.copy(_vInput).applyAxisAngle(_upAxis, ISOMETRIC_ROTATION_ANGLE);
+      // Hướng di chuyển tương đối bám sát góc quay 360 độ của Camera (Intuitive 360° Movement)
+      const curAngle = cameraOrbitAngle ?? Math.PI / 4;
+      const forwardX = -Math.sin(curAngle);
+      const forwardZ = -Math.cos(curAngle);
+      const rightX = Math.cos(curAngle);
+      const rightZ = -Math.sin(curAngle);
+
+      const targetMoveX = forwardX * (-inputZ) + rightX * inputX;
+      const targetMoveZ = forwardZ * (-inputZ) + rightZ * inputX;
+      _vMove.set(targetMoveX, 0, targetMoveZ);
+      if (_vMove.lengthSq() > 0) {
+        _vMove.normalize();
+      }
 
       const targetX = _vMove.x * activeSpeed;
       const targetZ = _vMove.z * activeSpeed;
@@ -348,7 +363,7 @@ export default function PlayerPhysics({
       rigidBodyRef.current.setLinvel(
         {
           x: targetX,
-          y: isInteriorMode && playerPos.y <= 0.35 && currentVel.y <= 0 ? 0 : currentVel.y,
+          y: currentVel.y,
           z: targetZ,
         },
         true
@@ -365,29 +380,39 @@ export default function PlayerPhysics({
         meshGroupRef.current.rotation.y = currentRotationY.current;
       }
 
-      // Hoạt ảnh bước chân lon ton Play Together
-      walkCycleRef.current += delta * 14;
-      const legSwing = Math.sin(walkCycleRef.current) * 0.45;
+      // Hoạt ảnh bước chân sải dài phong cách người mẫu thời trang
+      walkCycleRef.current += delta * 13;
+      const legSwing = Math.sin(walkCycleRef.current) * 0.52;
       const armSwing = Math.cos(walkCycleRef.current) * 0.45;
 
-      if (leftLegRef.current) leftLegRef.current.rotation.x = legSwing;
-      if (rightLegRef.current) rightLegRef.current.rotation.x = -legSwing;
-      if (leftArmRef.current) leftArmRef.current.rotation.x = -armSwing;
-      if (rightArmRef.current) rightArmRef.current.rotation.x = armSwing;
+      const leftLeg = avatarRef.current?.leftLeg || leftLegRef.current;
+      const rightLeg = avatarRef.current?.rightLeg || rightLegRef.current;
+      const leftArm = avatarRef.current?.leftArm || leftArmRef.current;
+      const rightArm = avatarRef.current?.rightArm || rightArmRef.current;
+
+      if (leftLeg) leftLeg.rotation.x = legSwing;
+      if (rightLeg) rightLeg.rotation.x = -legSwing;
+      if (leftArm) leftArm.rotation.x = -armSwing;
+      if (rightArm) rightArm.rotation.x = armSwing;
     } else {
       // Dừng di chuyển ngang khi thả phím
       rigidBodyRef.current.setLinvel(
         {
           x: 0,
-          y: isInteriorMode && playerPos.y <= 0.35 && currentVel.y <= 0 ? 0 : currentVel.y,
+          y: currentVel.y,
           z: 0,
         },
         true
       );
 
+      const leftLeg = avatarRef.current?.leftLeg || leftLegRef.current;
+      const rightLeg = avatarRef.current?.rightLeg || rightLegRef.current;
+      const leftArm = avatarRef.current?.leftArm || leftArmRef.current;
+      const rightArm = avatarRef.current?.rightArm || rightArmRef.current;
+
       // Trở về tư thế đứng bình thường (Idle)
-      if (leftLegRef.current) leftLegRef.current.rotation.x *= 0.8;
-      if (rightLegRef.current) rightLegRef.current.rotation.x *= 0.8;
+      if (leftLeg) leftLeg.rotation.x *= 0.8;
+      if (rightLeg) rightLeg.rotation.x *= 0.8;
 
       // Nếu đang nhảy múa (Dance Emote)
       if (currentEmote === 'dance') {
@@ -396,39 +421,52 @@ export default function PlayerPhysics({
           meshGroupRef.current.position.y = Math.abs(Math.sin(danceCycle)) * 0.2;
           meshGroupRef.current.rotation.y = currentRotationY.current + Math.sin(danceCycle) * 0.4;
         }
-        if (leftArmRef.current) leftArmRef.current.rotation.z = Math.sin(danceCycle) * 0.8;
-        if (rightArmRef.current) rightArmRef.current.rotation.z = -Math.sin(danceCycle) * 0.8;
+        if (leftArm) leftArm.rotation.z = Math.sin(danceCycle) * 0.8;
+        if (rightArm) rightArm.rotation.z = -Math.sin(danceCycle) * 0.8;
       } else if (currentEmote === 'wave') {
-        // Vẫy tay
-        if (rightArmRef.current) {
-          rightArmRef.current.rotation.z = Math.PI - 0.4 + Math.sin(state.clock.elapsedTime * 10) * 0.3;
+        // Vẫy tay chào thanh lịch
+        if (rightArm) {
+          rightArm.rotation.x = -2.2 + Math.sin(state.clock.elapsedTime * 9) * 0.4;
+          rightArm.rotation.z = 0.3;
+        }
+        if (leftArm) {
+          leftArm.rotation.x *= 0.8;
+          leftArm.rotation.z *= 0.8;
         }
       } else {
-        if (leftArmRef.current) leftArmRef.current.rotation.x *= 0.8;
-        if (rightArmRef.current) rightArmRef.current.rotation.x *= 0.8;
-        if (leftArmRef.current) leftArmRef.current.rotation.z *= 0.8;
-        if (rightArmRef.current) rightArmRef.current.rotation.z *= 0.8;
+        if (leftArm) {
+          leftArm.rotation.x *= 0.8;
+          leftArm.rotation.z *= 0.8;
+        }
+        if (rightArm) {
+          rightArm.rotation.x *= 0.8;
+          rightArm.rotation.z *= 0.8;
+        }
         if (meshGroupRef.current) meshGroupRef.current.position.y = 0;
       }
     }
 
-    // 3. Smooth Camera Follow bám sát người chơi (ổn định trục Y để không bị rung/giật)
-    const camAnchorY = isInteriorMode ? 0.15 : Math.max(0, playerPos.y);
+    // 3. Smooth Camera Follow bám sát người chơi theo góc quay 360 độ (360 Orbit Camera)
+    const curAngle = cameraOrbitAngle ?? Math.PI / 4;
+    const orbitRadius = isInteriorMode ? 22.0 : 25.5;
+    const camHeight = isInteriorMode ? 16.0 : 18.0;
+    const camAnchorY = isInteriorMode ? 0.2 : Math.max(0, playerPos.y);
+
     _targetCamPos.set(
-      playerPos.x + CAMERA_OFFSET.x,
-      camAnchorY + CAMERA_OFFSET.y,
-      playerPos.z + CAMERA_OFFSET.z
+      playerPos.x + orbitRadius * Math.sin(curAngle),
+      camAnchorY + camHeight,
+      playerPos.z + orbitRadius * Math.cos(curAngle)
     );
 
     if (
       elapsedSinceMount < 200 ||
-      state.camera.position.distanceToSquared(_targetCamPos) > 140
+      state.camera.position.distanceToSquared(_targetCamPos) > 160
     ) {
       state.camera.position.copy(_targetCamPos);
     } else {
-      state.camera.position.lerp(_targetCamPos, Math.min(1.0, delta * 7.5));
+      state.camera.position.lerp(_targetCamPos, Math.min(1.0, delta * 8.5));
     }
-    state.camera.lookAt(playerPos.x, camAnchorY + 0.8, playerPos.z);
+    state.camera.lookAt(playerPos.x, camAnchorY + 1.15, playerPos.z);
 
     // 4. Phát sóng tọa độ và trạng thái lên Multiplayer Server (khi đang ở ngoài thành phố)
     if (!isInteriorMode) {
@@ -458,16 +496,16 @@ export default function PlayerPhysics({
       friction={0}
       restitution={0}
     >
-      {/* Collider hình viên thuốc vừa vặn vóc dáng Chibi Play Together */}
+      {/* Collider hình viên thuốc vừa vặn vóc dáng Model thời trang */}
       <CapsuleCollider
-        args={[0.32, 0.36]}
-        position={[0, 0.68, 0]}
+        args={[0.34, 0.42]}
+        position={[0, 0.85, 0]}
         friction={0}
         restitution={0}
       />
 
       {/* Bảng tên & Level phong cách Play Together nổi trên đầu */}
-      <Html position={[0, 1.85, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
+      <Html position={[0, 2.25, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
         <div
           style={{
             display: 'flex',
@@ -508,112 +546,14 @@ export default function PlayerPhysics({
         </div>
       </Html>
 
-      {/* Model Nhân vật Chibi Play Together */}
+      {/* Model Nhân vật 3D phong cách Game Thời Trang cao cấp (Fashion Avatar) */}
       <group ref={meshGroupRef}>
-        {/* Bóng đổ tròn mờ dưới chân */}
-        <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.42, 16]} />
-          <meshBasicMaterial color="#000000" opacity={0.3} transparent />
-        </mesh>
-
-        {/* THÂN NHÂN VẬT (Áo thun / Hoodie pastel) */}
-        <mesh position={[0, 0.56, 0]} castShadow>
-          <capsuleGeometry args={[0.26, 0.36, 8, 16]} />
-          <meshStandardMaterial color={playerColor} roughness={0.3} />
-        </mesh>
-
-        {/* ĐẦU CHIBI TRÒN TO SIÊU DỄ THƯƠNG */}
-        <mesh position={[0, 1.14, 0]} castShadow>
-          <sphereGeometry args={[0.36, 20, 20]} />
-          <meshStandardMaterial color="#fed7aa" roughness={0.5} />
-        </mesh>
-
-        {/* MẮT ĐEN ANIME LẤP LÁNH (2 MẮT) */}
-        <mesh position={[-0.12, 1.18, 0.32]} castShadow>
-          <sphereGeometry args={[0.045, 12, 12]} />
-          <meshStandardMaterial color="#0f172a" roughness={0.1} />
-        </mesh>
-        <mesh position={[0.12, 1.18, 0.32]} castShadow>
-          <sphereGeometry args={[0.045, 12, 12]} />
-          <meshStandardMaterial color="#0f172a" roughness={0.1} />
-        </mesh>
-        {/* Điểm sáng trắng trong mắt */}
-        <mesh position={[-0.105, 1.2, 0.35]}>
-          <sphereGeometry args={[0.016, 8, 8]} />
-          <meshBasicMaterial color="#ffffff" />
-        </mesh>
-        <mesh position={[0.135, 1.2, 0.35]}>
-          <sphereGeometry args={[0.016, 8, 8]} />
-          <meshBasicMaterial color="#ffffff" />
-        </mesh>
-
-        {/* MÁ HỒNG CHIBI (BLUSH) */}
-        <mesh position={[-0.2, 1.1, 0.28]} rotation={[0, -Math.PI / 6, 0]}>
-          <circleGeometry args={[0.05, 12]} />
-          <meshBasicMaterial color="#fb7185" transparent opacity={0.65} />
-        </mesh>
-        <mesh position={[0.2, 1.1, 0.28]} rotation={[0, Math.PI / 6, 0]}>
-          <circleGeometry args={[0.05, 12]} />
-          <meshBasicMaterial color="#fb7185" transparent opacity={0.65} />
-        </mesh>
-
-        {/* NỤ CƯỜI TƯƠI TẮN */}
-        <mesh position={[0, 1.08, 0.34]} rotation={[0, 0, Math.PI]}>
-          <torusGeometry args={[0.04, 0.009, 8, 12, Math.PI]} />
-          <meshBasicMaterial color="#991b1b" />
-        </mesh>
-
-        {/* MŨ LƯỠI TRAI ĐỘI NGƯỢC PHONG CÁCH PLAY TOGETHER */}
-        <group position={[0, 1.34, 0]}>
-          <mesh castShadow>
-            <sphereGeometry args={[0.38, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshStandardMaterial color={hatColor || '#f59e0b'} roughness={0.4} />
-          </mesh>
-          {/* Vành mũ quay ra sau */}
-          <mesh position={[0, 0.02, -0.32]} rotation={[Math.PI / 6, 0, 0]}>
-            <boxGeometry args={[0.34, 0.04, 0.22]} />
-            <meshStandardMaterial color={hatColor || '#d97706'} />
-          </mesh>
-        </group>
-
-        {/* HAI TAY HOẠT HÌNH (ARMS) */}
-        <mesh ref={leftArmRef} position={[-0.32, 0.58, 0]} castShadow>
-          <capsuleGeometry args={[0.08, 0.28, 6, 12]} />
-          <meshStandardMaterial color="#fed7aa" roughness={0.5} />
-        </mesh>
-        <mesh ref={rightArmRef} position={[0.32, 0.58, 0]} castShadow>
-          <capsuleGeometry args={[0.08, 0.28, 6, 12]} />
-          <meshStandardMaterial color="#fed7aa" roughness={0.5} />
-        </mesh>
-
-        {/* HAI CHÂN & GIÀY SNEAKER THỂ THAO */}
-        <group position={[0, 0, 0]}>
-          {/* Chân trái */}
-          <group ref={leftLegRef} position={[-0.14, 0.26, 0]}>
-            <mesh position={[0, 0, 0]} castShadow>
-              <capsuleGeometry args={[0.09, 0.2, 6, 12]} />
-              <meshStandardMaterial color="#1e293b" />
-            </mesh>
-            {/* Giày trắng đỏ */}
-            <mesh position={[0, -0.16, 0.06]} castShadow>
-              <boxGeometry args={[0.18, 0.12, 0.26]} />
-              <meshStandardMaterial color="#ef4444" roughness={0.3} />
-            </mesh>
-          </group>
-
-          {/* Chân phải */}
-          <group ref={rightLegRef} position={[0.14, 0.26, 0]}>
-            <mesh position={[0, 0, 0]} castShadow>
-              <capsuleGeometry args={[0.09, 0.2, 6, 12]} />
-              <meshStandardMaterial color="#1e293b" />
-            </mesh>
-            {/* Giày trắng đỏ */}
-            <mesh position={[0, -0.16, 0.06]} castShadow>
-              <boxGeometry args={[0.18, 0.12, 0.26]} />
-              <meshStandardMaterial color="#ef4444" roughness={0.3} />
-            </mesh>
-          </group>
-        </group>
+        <FashionAvatar
+          ref={avatarRef}
+          outfitColor={playerColor}
+          hatColor={hatColor}
+          scale={1.35}
+        />
 
         {/* VÁN TRƯỢT SKATEBOARD TỐC ĐỘ CAO PLAY TOGETHER */}
         {effectiveVehicle === 'skateboard' && (
