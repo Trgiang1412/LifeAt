@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/models/User';
+import { ensureDefaultStarterHouse } from '@/models/PlayerHouse';
 import { comparePassword, signJwtToken } from '@/lib/auth';
 
 export async function POST(request: Request) {
@@ -33,6 +34,9 @@ export async function POST(request: Request) {
       );
     }
 
+    // Khi mới tạo tài khoản/chưa có nhà thì hệ thống tự random 1 lô đất, lần sau đăng nhập giữ nguyên lô đất đó
+    const nhaNguoiChoi = await ensureDefaultStarterHouse(user._id, user.tenDangNhap, false);
+
     const token = signJwtToken({
       userId: user._id.toString(),
       taiKhoan: user.taiKhoan,
@@ -48,6 +52,10 @@ export async function POST(request: Request) {
         tenDangNhap: user.tenDangNhap,
         tien: user.tien,
         roomId: user.roomId,
+        diemKinhNghiem: user.diemKinhNghiem || 0,
+        trinhDoTiengAnh: user.trinhDoTiengAnh || 'A1',
+        tuiDo: user.tuiDo || [],
+        nhaNguoiChoi,
       },
       token,
     });
@@ -59,4 +67,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

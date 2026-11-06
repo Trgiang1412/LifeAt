@@ -8,17 +8,34 @@ import { Space } from '@/types';
 interface BackgroundPlayerProps {
   currentSpace: Space;
   isZenMode?: boolean;
+  startTime?: number;
 }
 
-export default function BackgroundPlayer({ currentSpace, isZenMode }: BackgroundPlayerProps) {
+export default function BackgroundPlayer({ currentSpace, isZenMode, startTime = 0 }: BackgroundPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Mặc định mở âm thanh video ban đầu!
+  // Trạng thái tắt âm thanh video (mặc định false hoặc đọc từ localStorage khi client mount)
   const [isYtAudioMuted, setIsYtAudioMuted] = useState(false);
   const isMutedRef = useRef(isYtAudioMuted);
-  isMutedRef.current = isYtAudioMuted;
+
+  // Giữ initialMute và initialStart cố định cho mỗi khi đổi currentSpace
+  // Để khi bấm tắt/bật âm thanh, `src` không bị thay đổi -> video không bị reload lại từ đầu!
+  const currentYtIdRef = useRef<string | undefined>(undefined);
+  const initialMuteRef = useRef<number>(isYtAudioMuted ? 1 : 0);
+  const initialStartRef = useRef<number>(startTime || 0);
+
+  if (currentYtIdRef.current !== currentSpace.youtubeId) {
+    currentYtIdRef.current = currentSpace.youtubeId;
+    initialMuteRef.current = isMutedRef.current ? 1 : 0;
+    initialStartRef.current = startTime || 0;
+  }
+
+  // Giữ ref luôn đồng bộ với state
+  useEffect(() => {
+    isMutedRef.current = isYtAudioMuted;
+  }, [isYtAudioMuted]);
 
   // Brightness / Dimmer (0 = 100% full original brightness)
   const [dimLevel, setDimLevel] = useState<number>(0);
@@ -45,18 +62,22 @@ export default function BackgroundPlayer({ currentSpace, isZenMode }: Background
   const unmuteYouTube = useCallback(() => {
     setIsYtAudioMuted(false);
     isMutedRef.current = false;
+    try {
+      localStorage.setItem('lifeat_video_muted', 'false');
+    } catch {}
     sendIframeCommand('unMute');
     sendIframeCommand('setVolume', [70]);
-    sendIframeCommand('playVideo');
     if (videoRef.current) {
       videoRef.current.muted = false;
-      videoRef.current.play().catch(() => {});
     }
   }, [sendIframeCommand]);
 
   const muteYouTube = useCallback(() => {
     setIsYtAudioMuted(true);
     isMutedRef.current = true;
+    try {
+      localStorage.setItem('lifeat_video_muted', 'true');
+    } catch {}
     sendIframeCommand('mute');
     if (videoRef.current) {
       videoRef.current.muted = true;
@@ -71,42 +92,69 @@ export default function BackgroundPlayer({ currentSpace, isZenMode }: Background
     }
   }, [isYtAudioMuted, unmuteYouTube, muteYouTube]);
 
-  // Autoplay audio on space change only (do NOT re-run when toggling mute)
+  // Khôi phục cài đặt tắt/bật âm thanh từ localStorage khi client mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('lifeat_video_muted');
+      if (saved !== null) {
+        const shouldMute = saved === 'true';
+        setIsYtAudioMuted(shouldMute);
+        isMutedRef.current = shouldMute;
+        if (shouldMute) {
+          sendIframeCommand('mute');
+        }
+      }
+    } catch {}
+  }, [sendIframeCommand]);
+
+  // Xử lý âm thanh khi đổi Space
   useEffect(() => {
     setIsLoaded(false);
 
     if (isYouTube) {
-      // Delay slightly for iframe load then unmute if user didn't mute
-      const timer = setTimeout(() => {
-        if (!isMutedRef.current) {
-          sendIframeCommand('unMute');
-          sendIframeCommand('setVolume', [70]);
-          sendIframeCommand('playVideo');
-        }
-      }, 1000);
+      if (isMutedRef.current) {
+        // Nếu người dùng đang tắt âm: lập tức gửi lệnh mute và giữ mute
+        sendIframeCommand('mute');
+        const muteTimer1 = setTimeout(() => sendIframeCommand('mute'), 500);
+        const muteTimer2 = setTimeout(() => sendIframeCommand('mute'), 1200);
 
-      // Handle browser autoplay policy: unmute on first user click or keypress
-      const handleFirstGesture = () => {
-        if (!isMutedRef.current) {
-          sendIframeCommand('unMute');
-          sendIframeCommand('setVolume', [70]);
-          sendIframeCommand('playVideo');
-        }
-        window.removeEventListener('click', handleFirstGesture);
-        window.removeEventListener('keydown', handleFirstGesture);
-        window.removeEventListener('touchstart', handleFirstGesture);
-      };
+        return () => {
+          clearTimeout(muteTimer1);
+          clearTimeout(muteTimer2);
+        };
+      } else {
+        // Nếu đang bật âm: bật âm lượng sau khi iframe sẵn sàng
+        const timer = setTimeout(() => {
+          if (!isMutedRef.current) {
+            sendIframeCommand('unMute');
+            sendIframeCommand('setVolume', [70]);
+            sendIframeCommand('playVideo');
+          }
+        }, 1000);
 
-      window.addEventListener('click', handleFirstGesture);
-      window.addEventListener('keydown', handleFirstGesture);
-      window.addEventListener('touchstart', handleFirstGesture);
+        // Xử lý chính sách autoplay của trình duyệt: bật âm thanh khi tương tác
+        const handleFirstGesture = () => {
+          if (!isMutedRef.current) {
+            sendIframeCommand('unMute');
+            sendIframeCommand('setVolume', [70]);
+            sendIframeCommand('playVideo');
+          }
+          window.removeEventListener('click', handleFirstGesture);
+          window.removeEventListener('keydown', handleFirstGesture);
+          window.removeEventListener('touchstart', handleFirstGesture);
+        };
 
-      return () => {
-        clearTimeout(timer);
-        window.removeEventListener('click', handleFirstGesture);
-        window.removeEventListener('keydown', handleFirstGesture);
-        window.removeEventListener('touchstart', handleFirstGesture);
-      };
+        window.addEventListener('click', handleFirstGesture);
+        window.addEventListener('keydown', handleFirstGesture);
+        window.addEventListener('touchstart', handleFirstGesture);
+
+        return () => {
+          clearTimeout(timer);
+          window.removeEventListener('click', handleFirstGesture);
+          window.removeEventListener('keydown', handleFirstGesture);
+          window.removeEventListener('touchstart', handleFirstGesture);
+        };
+      }
     } else if (videoRef.current) {
       videoRef.current.muted = isMutedRef.current;
       videoRef.current.load();
@@ -169,12 +217,17 @@ export default function BackgroundPlayer({ currentSpace, isZenMode }: Background
           <iframe
             ref={iframeRef}
             key={currentSpace.youtubeId}
-            src={`https://www.youtube.com/embed/${currentSpace.youtubeId}?autoplay=1&mute=0&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1&loop=1&playlist=${currentSpace.youtubeId}&playsinline=1&enablejsapi=1`}
+            src={`https://www.youtube.com/embed/${currentSpace.youtubeId}?autoplay=1&mute=${initialMuteRef.current}${initialStartRef.current > 0 ? `&start=${Math.floor(initialStartRef.current)}` : ''}&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1&loop=1&playlist=${currentSpace.youtubeId}&playsinline=1&enablejsapi=1`}
             title={currentSpace.name}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             onLoad={() => {
               setIsLoaded(true);
-              if (!isMutedRef.current) {
+              if (initialStartRef.current > 0) {
+                sendIframeCommand('seekTo', [Math.floor(initialStartRef.current), true]);
+              }
+              if (isMutedRef.current) {
+                sendIframeCommand('mute');
+              } else {
                 setTimeout(() => {
                   if (!isMutedRef.current) {
                     unmuteYouTube();
@@ -194,7 +247,12 @@ export default function BackgroundPlayer({ currentSpace, isZenMode }: Background
           loop
           muted={isYtAudioMuted}
           playsInline
-          onLoadedData={() => setIsLoaded(true)}
+          onLoadedData={() => {
+            setIsLoaded(true);
+            if (startTime > 0 && videoRef.current) {
+              videoRef.current.currentTime = startTime;
+            }
+          }}
           style={{
             position: 'absolute',
             top: '50%',

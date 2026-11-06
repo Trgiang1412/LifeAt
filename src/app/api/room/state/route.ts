@@ -38,7 +38,8 @@ export async function GET(request: Request) {
         roomCode,
         hostId: currentUser?.userId || '',
         hostName: currentUser?.tenDangNhap ? `${currentUser.tenDangNhap}'s Room` : "Trường's Room",
-        spaceId: 'yt-lofi-room-chill',
+        spaceId: 'yt-nestled-above-city',
+        spaceStartedAt: Date.now(),
         timer: {
           mode: 'pomodoro',
           timeLeft: 25 * 60,
@@ -121,6 +122,8 @@ export async function GET(request: Request) {
       hostId: state.hostId,
       hostName: state.hostName,
       spaceId: state.spaceId,
+      currentSpace: state.currentSpace,
+      spaceStartedAt: state.spaceStartedAt,
       timer: state.timer,
       participants: state.participants,
     });
@@ -137,7 +140,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { roomCode, spaceId, timer, hostName, hostId } = body;
+    const { roomCode, spaceId, currentSpace, spaceStartedAt, timer, hostName, hostId } = body;
 
     if (!roomCode) {
       return NextResponse.json(
@@ -150,6 +153,8 @@ export async function POST(request: Request) {
 
     const updateData: any = {};
     if (spaceId) updateData.spaceId = spaceId;
+    if (currentSpace) updateData.currentSpace = currentSpace;
+    if (typeof spaceStartedAt === 'number') updateData.spaceStartedAt = spaceStartedAt;
     if (timer) updateData.timer = timer;
     if (hostName) updateData.hostName = hostName;
     if (hostId) updateData.hostId = hostId;

@@ -3,12 +3,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
+import { Html } from './SafeHtml';
 import {
   RigidBody,
   CapsuleCollider,
   BallCollider,
 } from '@react-three/rapier';
+import {
+  getLocalPlayerPosition,
+  getNearbyStreetNpcId,
+  setNearbyStreetNpcId,
+} from '@/stores/useMultiplayerStore';
 
 // ============================================================================
 // KHỞI TẠO BIẾN DÙNG CHUNG BÊN NGOÀI ĐỂ TRIỆT TIÊU GC SPIKE Ở 60-120 FPS
@@ -26,6 +31,7 @@ interface NPCProps {
 }
 
 export default function NPC({
+  id,
   name,
   role,
   position,
@@ -33,30 +39,55 @@ export default function NPC({
   badgeColor = '#38bdf8',
   onInteract,
 }: NPCProps) {
+  const npcKey = id || name;
   const [isInRange, setIsInRange] = useState(false);
+  const isInRangeRef = useRef(false);
   const avatarGroupRef = useRef<THREE.Group>(null);
 
-  // Lắng nghe phím 'E' để mở hội thoại khi người chơi ở trong bán kính sensor
+  // Lắng nghe phím 'E' để mở hội thoại khi người chơi ở trong bán kính NPC
   useEffect(() => {
-    if (!isInRange) return;
-
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'e' || event.key === 'E') {
-        event.preventDefault();
-        onInteract();
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      if ((event.code === 'KeyE' || event.key === 'e' || event.key === 'E') && isInRangeRef.current) {
+        const activeNpcId = getNearbyStreetNpcId();
+        if (!activeNpcId || activeNpcId === npcKey) {
+          event.preventDefault();
+          event.stopPropagation();
+          onInteract();
+        }
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      if (getNearbyStreetNpcId() === npcKey) {
+        setNearbyStreetNpcId(null);
+      }
     };
-  }, [isInRange, onInteract]);
+  }, [npcKey, onInteract]);
 
-  // Hiệu ứng thở nhẹ (idle breathing) không gây GC
+  // Kiểm tra khoảng cách thực tế tới người chơi mỗi frame + hiệu ứng thở nhẹ (idle breathing)
   useFrame((state) => {
     if (avatarGroupRef.current) {
       avatarGroupRef.current.position.y = Math.sin(state.clock.elapsedTime * 2.5) * 0.04;
+    }
+    const playerPos = getLocalPlayerPosition();
+    const dist = Math.hypot(playerPos.x - position[0], playerPos.z - position[2]);
+    const nearNow = dist <= 3.6;
+
+    if (nearNow !== isInRangeRef.current) {
+      isInRangeRef.current = nearNow;
+      setIsInRange(nearNow);
+      if (nearNow) {
+        setNearbyStreetNpcId(npcKey);
+      } else if (getNearbyStreetNpcId() === npcKey) {
+        setNearbyStreetNpcId(null);
+      }
+    } else if (nearNow && !getNearbyStreetNpcId()) {
+      setNearbyStreetNpcId(npcKey);
     }
   });
 
@@ -99,7 +130,13 @@ export default function NPC({
       />
 
       {/* 3. 3D Model NPC (Stylized Barista / Emma) */}
-      <group ref={avatarGroupRef}>
+      <group
+        ref={avatarGroupRef}
+        onClick={(e) => {
+          e.stopPropagation();
+          onInteract();
+        }}
+      >
         {/* Bóng đổ tròn dưới chân */}
         <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[0.35, 16]} />
@@ -138,16 +175,15 @@ export default function NPC({
       </group>
 
       {/* 
-        4. 3D Tooltip Html: "Press [E] to talk" 
-        Hiển thị khi người chơi bước vào bán kính sensor 2.5m
+        4. 3D Tooltip Html: Hiển thị tên NPC & hướng dẫn tương tác [E]
       */}
-      {isInRange && (
-        <Html
-          position={[_vTooltipPos.x, _vTooltipPos.y, _vTooltipPos.z]}
-          center
-          distanceFactor={15}
-          style={{ pointerEvents: 'none' }}
-        >
+      <Html
+        position={[_vTooltipPos.x, _vTooltipPos.y, _vTooltipPos.z]}
+        center
+        zIndexRange={[10, 0]}
+        style={{ pointerEvents: 'none' }}
+      >
+        {isInRange ? (
           <div
             style={{
               display: 'flex',
@@ -196,7 +232,7 @@ export default function NPC({
               {/* Text hướng dẫn */}
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
-                  Press [E] to talk with {name}
+                  Nhấn [E] trò chuyện cùng {name}
                 </span>
                 <span style={{ fontSize: '10px', color: badgeColor, fontWeight: 600 }}>
                   {role}
@@ -215,8 +251,25 @@ export default function NPC({
               }}
             />
           </div>
-        </Html>
-      )}
+        ) : (
+          <div
+            style={{
+              padding: '3px 10px',
+              borderRadius: '14px',
+              backgroundColor: 'rgba(15, 23, 42, 0.82)',
+              border: `1.5px solid ${badgeColor}`,
+              color: '#ffffff',
+              fontSize: '11px',
+              fontWeight: 800,
+              whiteSpace: 'nowrap',
+              fontFamily: 'system-ui, sans-serif',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.4)',
+            }}
+          >
+            💬 {name}
+          </div>
+        )}
+      </Html>
     </RigidBody>
   );
 }

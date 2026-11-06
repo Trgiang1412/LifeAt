@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/models/User';
+import { ensureDefaultStarterHouse } from '@/models/PlayerHouse';
 import { verifyJwtToken } from '@/lib/auth';
 
 export async function GET(request: Request) {
@@ -33,6 +34,9 @@ export async function GET(request: Request) {
       );
     }
 
+    // Tự động kiểm tra và cấp mặc định Ngôi Nhà Cấp 4 nếu tài khoản chưa có
+    const nhaNguoiChoi = await ensureDefaultStarterHouse(user._id, user.tenDangNhap);
+
     return NextResponse.json({
       user: {
         id: user._id,
@@ -40,6 +44,10 @@ export async function GET(request: Request) {
         tenDangNhap: user.tenDangNhap,
         tien: user.tien,
         roomId: user.roomId,
+        diemKinhNghiem: user.diemKinhNghiem || 0,
+        trinhDoTiengAnh: user.trinhDoTiengAnh || 'A1',
+        tuiDo: user.tuiDo || [],
+        nhaNguoiChoi,
       },
     });
   } catch (error: any) {
@@ -50,4 +58,3 @@ export async function GET(request: Request) {
     );
   }
 }
-

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/models/User';
+import { ensureDefaultStarterHouse } from '@/models/PlayerHouse';
 import { hashPassword, signJwtToken } from '@/lib/auth';
 
 export async function POST(request: Request) {
@@ -51,6 +52,9 @@ export async function POST(request: Request) {
       tien: 100, // Khuyến mãi 100 xu lo-fi cho thành viên mới
     });
 
+    // Mặc định cấp ngay 1 Ngôi Nhà Cấp 4 cho người dùng mới
+    const nhaNguoiChoi = await ensureDefaultStarterHouse(newUser._id, newUser.tenDangNhap);
+
     // Sign JWT token
     const token = signJwtToken({
       userId: newUser._id.toString(),
@@ -61,13 +65,16 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        message: 'Đăng ký tài khoản thành công! Chào mừng đến với LifeAt.',
+        message: 'Đăng ký tài khoản thành công! Bạn đã được cấp 1 Ngôi Nhà Cấp 4.',
         user: {
           id: newUser._id,
           taiKhoan: newUser.taiKhoan,
           tenDangNhap: newUser.tenDangNhap,
           tien: newUser.tien,
           roomId: newUser.roomId,
+          diemKinhNghiem: newUser.diemKinhNghiem || 0,
+          trinhDoTiengAnh: newUser.trinhDoTiengAnh || 'A1',
+          nhaNguoiChoi,
         },
         token,
       },
@@ -81,4 +88,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

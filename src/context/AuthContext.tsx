@@ -2,12 +2,68 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+export interface PlayerHouseData {
+  id: string;
+  tenNha: string;
+  loaiNha: string;
+  maLoDat: string;
+  capDoNha: number;
+  moHinhNgoaiThat: string;
+  mauTuong: string;
+  mauMai: string;
+  kichThuocLuoiNoiThat: [number, number];
+  danhSachNoiThat: Array<{
+    maVatPham: string;
+    tenVatPham?: string;
+    toaDoLuoiX: number;
+    toaDoLuoiZ: number;
+    gocXoayDo: number;
+  }>;
+  danhSachPhuongTienSoHuu?: string[];
+}
+
 export interface AuthUser {
   id: string;
   taiKhoan: string;
   tenDangNhap: string;
   tien: number;
   roomId: string;
+  diemKinhNghiem?: number;
+  trinhDoTiengAnh?: string;
+  tuiDo?: Array<{ maVatPham: string; loaiVatPham: string; soLuong: number }>;
+  nhaNguoiChoi?: PlayerHouseData;
+}
+
+export function getDefaultHouseForUser(tenDangNhap: string = 'Bạn'): PlayerHouseData {
+  return {
+    id: 'starter-cap4',
+    tenNha: `Nhà Cấp 4 của ${tenDangNhap}`,
+    loaiNha: 'Nhà Cấp 4 Mái Ngói',
+    maLoDat: 'PLOT_STARTER_CAP4',
+    capDoNha: 1,
+    moHinhNgoaiThat: 'NHA_CAP_4_VN_REALISTIC',
+    mauTuong: '#f5ebd6',
+    mauMai: '#b93829',
+    kichThuocLuoiNoiThat: [10, 10],
+    danhSachNoiThat: [
+      { maVatPham: 'GIUONG_GO_DON', tenVatPham: 'Giường Gỗ Đơn Ấm Cúng', toaDoLuoiX: 2, toaDoLuoiZ: 2, gocXoayDo: 0 },
+      { maVatPham: 'BAN_HOC_DEN_LED', tenVatPham: 'Bàn Học Tiếng Anh & Laptop', toaDoLuoiX: 7, toaDoLuoiZ: 2, gocXoayDo: 0 },
+      { maVatPham: 'KE_SACH_OXFORD', tenVatPham: 'Kệ Sách Gỗ Sồi', toaDoLuoiX: 8, toaDoLuoiZ: 2, gocXoayDo: 0 },
+      { maVatPham: 'SOFA_GO_PHONG_KHACH', tenVatPham: 'Bộ Trường Kỷ & Bàn Trà', toaDoLuoiX: 3, toaDoLuoiZ: 6, gocXoayDo: 90 },
+      { maVatPham: 'KE_TIVI_CO_DIEN', tenVatPham: 'Kệ Tivi Gỗ & Loa Lo-Fi', toaDoLuoiX: 7, toaDoLuoiZ: 6, gocXoayDo: 270 },
+      { maVatPham: 'THAM_DET_THO_CAM', tenVatPham: 'Thảm Trải Sàn Phòng Khách', toaDoLuoiX: 5, toaDoLuoiZ: 6, gocXoayDo: 0 },
+    ],
+  };
+}
+
+function normalizeUserWithStarterHouse(u: AuthUser): AuthUser {
+  if (!u.nhaNguoiChoi) {
+    return {
+      ...u,
+      nhaNguoiChoi: getDefaultHouseForUser(u.tenDangNhap),
+    };
+  }
+  return u;
 }
 
 interface AuthContextType {
@@ -50,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(savedToken);
       if (savedUser) {
         try {
-          setUser(JSON.parse(savedUser));
+          setUser(normalizeUserWithStarterHouse(JSON.parse(savedUser)));
         } catch {}
       }
 
@@ -63,8 +119,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data && data.user) {
-            setUser(data.user);
-            localStorage.setItem('lifeat_user', JSON.stringify(data.user));
+            const normalized = normalizeUserWithStarterHouse(data.user);
+            setUser(normalized);
+            localStorage.setItem('lifeat_user', JSON.stringify(normalized));
           } else {
             // Token expired or invalid
             logout();
@@ -92,10 +149,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, message: data.message || 'Đăng nhập thất bại.' };
       }
 
-      setUser(data.user);
+      const normalized = normalizeUserWithStarterHouse(data.user);
+      setUser(normalized);
       setToken(data.token);
       localStorage.setItem('lifeat_jwt_token', data.token);
-      localStorage.setItem('lifeat_user', JSON.stringify(data.user));
+      localStorage.setItem('lifeat_user', JSON.stringify(normalized));
 
       return { success: true };
     } catch (err: any) {
@@ -116,10 +174,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, message: data.message || 'Đăng ký thất bại.' };
       }
 
-      setUser(data.user);
+      const normalized = normalizeUserWithStarterHouse(data.user);
+      setUser(normalized);
       setToken(data.token);
       localStorage.setItem('lifeat_jwt_token', data.token);
-      localStorage.setItem('lifeat_user', JSON.stringify(data.user));
+      localStorage.setItem('lifeat_user', JSON.stringify(normalized));
 
       return { success: true };
     } catch (err: any) {
@@ -143,8 +202,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         if (data.user) {
-          setUser(data.user);
-          localStorage.setItem('lifeat_user', JSON.stringify(data.user));
+          const normalized = normalizeUserWithStarterHouse(data.user);
+          setUser(normalized);
+          localStorage.setItem('lifeat_user', JSON.stringify(normalized));
         }
       }
     } catch {}
@@ -166,4 +226,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     </AuthContext.Provider>
   );
 }
-

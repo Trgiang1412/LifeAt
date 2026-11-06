@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Box } from '@mui/material';
+import { io, Socket } from 'socket.io-client';
 import TopBar from '@/components/layout/TopBar';
 import BottomDock from '@/components/layout/BottomDock';
 import BackgroundPlayer from '@/components/layout/BackgroundPlayer';
@@ -37,6 +38,11 @@ export default function RoomClient({
   const { user, token } = useAuth();
   const [currentSpace, setCurrentSpace] = useState<Space>(SPACES_DATA[0]);
   const [activeWidgets, setActiveWidgets] = useState<Set<ActiveWidget>>(new Set(['timer']));
+  const [isTimerMinimized, setIsTimerMinimized] = useState<boolean>(false);
+  const isTimerMinimizedRef = useRef(isTimerMinimized);
+  isTimerMinimizedRef.current = isTimerMinimized;
+  const activeWidgetsRef = useRef(activeWidgets);
+  activeWidgetsRef.current = activeWidgets;
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
   const [isSpacesOpen, setIsSpacesOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
@@ -61,7 +67,14 @@ export default function RoomClient({
     : user?.roomId || initialSpaceCode;
 
   // Xác định người dùng có phải là Host hay là Khách
-  const isHost = !isVisitingSpecificRoom || Boolean(user && user.roomId === effectiveCode);
+  const [isActuallyHost, setIsActuallyHost] = useState<boolean>(() => {
+    if (!user) return false;
+    return Boolean(user.roomId === effectiveCode || (user.id && roomId === user.id));
+  });
+
+  const [videoStartTime, setVideoStartTime] = useState<number>(0);
+  const socketRef = useRef<Socket | null>(null);
+  const hasHostSyncedInitialSpaceRef = useRef<boolean>(false);
 
   // Trạng thái đồng bộ từ Chủ phòng
   const [hostRoomName, setHostRoomName] = useState<string>(effectiveHost);
@@ -77,6 +90,47 @@ export default function RoomClient({
   // Ref lưu space hiện tại để tránh stale closure khi sync
   const currentSpaceIdRef = useRef(currentSpace.id);
   currentSpaceIdRef.current = currentSpace.id;
+
+  // Kết nối Socket.io để đồng bộ không gian / video tức thời 0ms giữa chủ phòng và khách
+  useEffect(() => {
+    let socket: Socket | null = null;
+    try {
+      socket = io({
+        transports: ['websocket', 'polling'],
+      });
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        socket?.emit('joinRoom', { roomCode: effectiveCode });
+      });
+
+      const handleRemoteSpace = (data: any) => {
+        // Chỉ khách mới nhận lệnh đồng bộ từ chủ phòng
+        if (!isActuallyHost) {
+          const remoteSpace = data.space || data;
+          if (remoteSpace && remoteSpace.id) {
+            currentSpaceIdRef.current = remoteSpace.id;
+            setCurrentSpace(remoteSpace);
+            if (typeof data.spaceStartedAt === 'number') {
+              const elapsed = Math.max(0, Math.floor((Date.now() - data.spaceStartedAt) / 1000));
+              setVideoStartTime(elapsed);
+            }
+          }
+        }
+      };
+
+      socket.on('roomSpaceChanged', handleRemoteSpace);
+      socket.on(`roomSpaceChanged_${effectiveCode}`, handleRemoteSpace);
+    } catch {}
+
+    return () => {
+      if (socket) {
+        socket.off('roomSpaceChanged');
+        socket.off(`roomSpaceChanged_${effectiveCode}`);
+        socket.disconnect();
+      }
+    };
+  }, [effectiveCode, isActuallyHost]);
 
   // Rời phòng và quay về phòng cá nhân
   const handleLeaveRoom = useCallback(async () => {
@@ -123,17 +177,53 @@ export default function RoomClient({
           setHostRoomName(data.hostName);
         }
 
+        if (data.hostId) {
+          const userIsHost = Boolean(user && user.id === data.hostId) || Boolean(user && user.roomId === effectiveCode);
+          setIsActuallyHost(userIsHost);
+        }
+
         // Nếu là khách -> Đồng bộ nhạc & space và đồng hồ theo chủ phòng
-        if (!isHost) {
-          if (data.spaceId && data.spaceId !== currentSpaceIdRef.current) {
+        if (!isActuallyHost) {
+          if (data.currentSpace && data.currentSpace.id) {
+            if (data.currentSpace.id !== currentSpaceIdRef.current) {
+              currentSpaceIdRef.current = data.currentSpace.id;
+              setCurrentSpace(data.currentSpace);
+              if (typeof data.spaceStartedAt === 'number') {
+                const elapsed = Math.max(0, Math.floor((Date.now() - data.spaceStartedAt) / 1000));
+                setVideoStartTime(elapsed);
+              }
+            }
+          } else if (data.spaceId && data.spaceId !== currentSpaceIdRef.current) {
             const matchedSpace = SPACES_DATA.find((s) => s.id === data.spaceId);
             if (matchedSpace) {
+              currentSpaceIdRef.current = matchedSpace.id;
               setCurrentSpace(matchedSpace);
+              if (typeof data.spaceStartedAt === 'number') {
+                const elapsed = Math.max(0, Math.floor((Date.now() - data.spaceStartedAt) / 1000));
+                setVideoStartTime(elapsed);
+              }
             }
           }
 
           if (data.timer) {
             setSyncedTimer(data.timer);
+          }
+        } else {
+          // Nếu là chủ phòng và DB chưa có space (hoặc space cũ), đồng bộ space hiện tại lên DB ngay!
+          if (!hasHostSyncedInitialSpaceRef.current && (!data.spaceId || data.spaceId === 'yt-lofi-room-chill' || !data.currentSpace)) {
+            hasHostSyncedInitialSpaceRef.current = true;
+            fetch('/api/room/state', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                roomCode: effectiveCode,
+                spaceId: currentSpace.id,
+                currentSpace,
+                spaceStartedAt: Date.now(),
+                hostName: effectiveHost,
+                hostId: user?.id || '',
+              }),
+            }).catch(() => {});
           }
         }
       } catch {
@@ -151,32 +241,49 @@ export default function RoomClient({
       isMounted = false;
       clearInterval(interval);
     };
-  }, [effectiveCode, token, isHost]);
+  }, [effectiveCode, token, isActuallyHost, user, currentSpace, effectiveHost]);
 
   // Chủ phòng chọn không gian -> cập nhật cho toàn bộ phòng
   const handleSelectSpace = useCallback(
     (space: Space) => {
+      hasHostSyncedInitialSpaceRef.current = true;
+      currentSpaceIdRef.current = space.id;
       setCurrentSpace(space);
-      if (isHost) {
+      setVideoStartTime(0);
+
+      const now = Date.now();
+      if (isActuallyHost) {
+        // 1. Lưu vào Database
         fetch('/api/room/state', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             roomCode: effectiveCode,
             spaceId: space.id,
+            currentSpace: space,
+            spaceStartedAt: now,
             hostName: effectiveHost,
             hostId: user?.id || '',
           }),
         }).catch(() => {});
+
+        // 2. Broadcast tức thời qua Socket.io
+        if (socketRef.current && socketRef.current.connected) {
+          socketRef.current.emit('syncRoomSpace', {
+            roomCode: effectiveCode,
+            space,
+            spaceStartedAt: now,
+          });
+        }
       }
     },
-    [isHost, effectiveCode, effectiveHost, user]
+    [isActuallyHost, effectiveCode, effectiveHost, user]
   );
 
   // Chủ phòng cập nhật đồng hồ -> cập nhật cho toàn bộ phòng
   const handleTimerUpdate = useCallback(
     (timer: any) => {
-      if (isHost) {
+      if (isActuallyHost) {
         fetch('/api/room/state', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -189,11 +296,29 @@ export default function RoomClient({
         }).catch(() => {});
       }
     },
-    [isHost, effectiveCode, effectiveHost, user]
+    [isActuallyHost, effectiveCode, effectiveHost, user]
   );
 
   // Toggle widget in set
   const toggleWidget = useCallback((w: ActiveWidget) => {
+    if (w === 'timer') {
+      const isOpen = activeWidgetsRef.current.has('timer');
+      const isMin = isTimerMinimizedRef.current;
+
+      if (!isOpen) {
+        // Chưa mở -> Mở lên và hiển thị
+        setActiveWidgets((prev) => new Set(prev).add('timer'));
+        setIsTimerMinimized(false);
+      } else if (isMin) {
+        // Đang mở nhưng bị ẩn -> HIỆN LÊN NGAY LẬP TỨC
+        setIsTimerMinimized(false);
+      } else {
+        // Đang hiển thị -> Thu nhỏ ẩn đi
+        setIsTimerMinimized(true);
+      }
+      return;
+    }
+
     setActiveWidgets((prev) => {
       const next = new Set(prev);
       if (next.has(w)) {
@@ -206,6 +331,9 @@ export default function RoomClient({
   }, []);
 
   const closeWidget = useCallback((w: ActiveWidget) => {
+    if (w === 'timer') {
+      setIsTimerMinimized(false);
+    }
     setActiveWidgets((prev) => {
       const next = new Set(prev);
       next.delete(w);
@@ -242,16 +370,16 @@ export default function RoomClient({
       }}
     >
       {/* Background Video & Scenery */}
-      <BackgroundPlayer currentSpace={currentSpace} isZenMode={isZenMode} />
+      <BackgroundPlayer currentSpace={currentSpace} isZenMode={isZenMode} startTime={videoStartTime} />
 
       {/* Top Navigation Bar */}
       <TopBar
-        roomHost={isHost ? effectiveHost : hostRoomName}
+        roomHost={isActuallyHost ? effectiveHost : hostRoomName}
         roomCode={effectiveCode}
         isZenMode={isZenMode}
         onToggleZenMode={() => setIsZenMode(!isZenMode)}
         onOpenSpaces={() => setIsSpacesOpen(true)}
-        isHost={isHost}
+        isHost={isActuallyHost}
         onLeaveRoom={handleLeaveRoom}
         participantCount={participantCount}
       />
@@ -260,11 +388,13 @@ export default function RoomClient({
       <WidgetsContainer
         activeWidgets={activeWidgets}
         onCloseWidget={closeWidget}
+        isTimerMinimized={isTimerMinimized}
+        onMinimizeTimer={() => setIsTimerMinimized(true)}
         settings={settings}
-        hostName={isHost ? effectiveHost : hostRoomName}
+        hostName={isActuallyHost ? effectiveHost : hostRoomName}
         roomCode={effectiveCode}
         isZenMode={isZenMode}
-        isHost={isHost}
+        isHost={isActuallyHost}
         syncedTimer={syncedTimer}
         onTimerUpdate={handleTimerUpdate}
         onLeaveRoom={handleLeaveRoom}
@@ -274,6 +404,7 @@ export default function RoomClient({
       {/* Bottom Command Dock */}
       <BottomDock
         activeWidgets={activeWidgets}
+        isTimerMinimized={isTimerMinimized}
         onToggleWidget={toggleWidget}
         onOpenSpaces={() => setIsSpacesOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
@@ -287,8 +418,8 @@ export default function RoomClient({
         onClose={() => setIsSpacesOpen(false)}
         currentSpace={currentSpace}
         onSelectSpace={handleSelectSpace}
-        isHost={isHost}
-        hostName={isHost ? effectiveHost : hostRoomName}
+        isHost={isActuallyHost}
+        hostName={isActuallyHost ? effectiveHost : hostRoomName}
       />
 
       {/* Room Settings Modal */}

@@ -49,20 +49,58 @@ app.prepare().then(() => {
    *   chatTime: number
    * }>}
    */
+  const ALL_PLOT_CODES = [
+    'PLOT_CAP4_01',
+    'PLOT_CAP4_02',
+    'PLOT_CAP4_03',
+    'PLOT_CAP4_04',
+    'PLOT_CAP4_05',
+    'PLOT_CAP4_06',
+    'PLOT_CAP4_07',
+    'PLOT_CAP4_08',
+    'PLOT_CAP4_09',
+    'PLOT_CAP4_10',
+  ];
+
+  function pickSocketPlot(excludeSocketId, preferredPlot) {
+    const used = new Set();
+    for (const [sid, p] of players.entries()) {
+      if (sid !== excludeSocketId && p.maLoDat) {
+        used.add(p.maLoDat);
+      }
+    }
+    if (preferredPlot && ALL_PLOT_CODES.includes(preferredPlot) && !used.has(preferredPlot)) {
+      return preferredPlot;
+    }
+    const available = ALL_PLOT_CODES.filter((code) => !used.has(code));
+    const pool = available.length > 0 ? available : ALL_PLOT_CODES;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
   const players = new Map();
 
   io.on('connection', (socket) => {
     console.log(`[Socket.io] Người chơi kết nối: ${socket.id}`);
 
+    const initialPlot = pickSocketPlot(socket.id, null);
+
     // 1. Khởi tạo trạng thái mặc định cho người chơi mới
     players.set(socket.id, {
       id: socket.id,
+      clientId: socket.id,
       username: `Student_${socket.id.slice(0, 4)}`,
       x: (Math.random() - 0.5) * 3,
-      y: 1.0,
-      z: (Math.random() - 0.5) * 3,
+      y: 1.2,
+      z: 5 + (Math.random() - 0.5) * 3,
       rotationY: 0,
       avatarColor: '#38bdf8',
+      isSkateboarding: false,
+      isFishing: false,
+      currentEmote: null,
+      maLoDat: initialPlot,
+      houseTitle: `Nhà Cấp 4`,
+      houseWallColor: '#f5ebd6',
+      houseRoofColor: '#b93829',
       currentChat: '',
       chatTime: 0,
     });
@@ -71,17 +109,23 @@ app.prepare().then(() => {
     socket.on('playerJoin', (data) => {
       const player = players.get(socket.id);
       if (player && data) {
+        if (data.clientId) player.clientId = String(data.clientId);
         if (data.username) player.username = String(data.username).slice(0, 24);
         if (data.avatarColor) player.avatarColor = data.avatarColor;
         if (typeof data.x === 'number') player.x = data.x;
         if (typeof data.y === 'number') player.y = data.y;
         if (typeof data.z === 'number') player.z = data.z;
+        player.maLoDat = pickSocketPlot(socket.id, data.maLoDat);
+        if (data.houseTitle) player.houseTitle = String(data.houseTitle).slice(0, 40);
+        if (data.houseWallColor) player.houseWallColor = data.houseWallColor;
+        if (data.houseRoofColor) player.houseRoofColor = data.houseRoofColor;
         players.set(socket.id, player);
       }
+      socket.emit('plotAssigned', { maLoDat: player?.maLoDat });
       socket.broadcast.emit('playerJoined', players.get(socket.id));
     });
 
-    // 2. Lắng nghe event playerMove (tọa độ x, y, z, rotationY)
+    // 2. Lắng nghe event playerMove (tọa độ x, y, z, rotationY + trạng thái)
     socket.on('playerMove', (data) => {
       const player = players.get(socket.id);
       if (player && data) {
@@ -89,6 +133,13 @@ app.prepare().then(() => {
         if (typeof data.y === 'number') player.y = data.y;
         if (typeof data.z === 'number') player.z = data.z;
         if (typeof data.rotationY === 'number') player.rotationY = data.rotationY;
+        if (data.username) player.username = String(data.username).slice(0, 24);
+        if (typeof data.isSkateboarding === 'boolean') player.isSkateboarding = data.isSkateboarding;
+        if (typeof data.isFishing === 'boolean') player.isFishing = data.isFishing;
+        if (data.currentEmote !== undefined) player.currentEmote = data.currentEmote;
+        if (data.houseTitle) player.houseTitle = data.houseTitle;
+        if (data.houseWallColor) player.houseWallColor = data.houseWallColor;
+        if (data.houseRoofColor) player.houseRoofColor = data.houseRoofColor;
       }
     });
 
@@ -140,6 +191,14 @@ app.prepare().then(() => {
         io.to(`room_${data.roomCode}`).emit('roomChatMessage', messagePayload);
         io.emit(`roomChatMessage_${data.roomCode}`, messagePayload);
         socket.broadcast.emit('roomChatMessage', messagePayload);
+      }
+    });
+
+    // 3.3 Đồng bộ không gian / video phòng học tức thì (syncRoomSpace)
+    socket.on('syncRoomSpace', (data) => {
+      if (data && data.roomCode && data.space) {
+        socket.to(`room_${data.roomCode}`).emit('roomSpaceChanged', data);
+        io.emit(`roomSpaceChanged_${data.roomCode}`, data);
       }
     });
 

@@ -16,6 +16,7 @@ import PauseRoundedIcon from '@mui/icons-material/PauseRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import SkipNextRoundedIcon from '@mui/icons-material/SkipNextRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import MinimizeRoundedIcon from '@mui/icons-material/MinimizeRounded';
 import TimerRoundedIcon from '@mui/icons-material/TimerRounded';
 import VolumeUpRoundedIcon from '@mui/icons-material/VolumeUpRounded';
 import confetti from 'canvas-confetti';
@@ -24,6 +25,7 @@ import { PomodoroMode, PomodoroSettings } from '@/types';
 
 interface PomodoroWidgetProps {
   onClose: () => void;
+  onMinimize?: () => void;
   settings: PomodoroSettings;
   onSessionComplete?: () => void;
   isHost?: boolean;
@@ -44,6 +46,7 @@ interface PomodoroWidgetProps {
 
 export default function PomodoroWidget({
   onClose,
+  onMinimize,
   settings,
   onSessionComplete,
   isHost = true,
@@ -211,9 +214,42 @@ export default function PomodoroWidget({
             POMODORO
           </Typography>
         </Box>
-        <IconButton size="small" onClick={onClose} sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-          <CloseRoundedIcon fontSize="small" />
-        </IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          {onMinimize && (
+            <Tooltip title="Ẩn (Thời gian vẫn chạy)" placement="top">
+              <IconButton
+                size="small"
+                onClick={onMinimize}
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  p: 0.5,
+                  '&:hover': {
+                    color: '#fff',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  },
+                }}
+              >
+                <MinimizeRoundedIcon sx={{ fontSize: 18, transform: 'translateY(-3px)' }} />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip title="Đóng" placement="top">
+            <IconButton
+              size="small"
+              onClick={onClose}
+              sx={{
+                color: 'rgba(255, 255, 255, 0.6)',
+                p: 0.5,
+                '&:hover': {
+                  color: '#fff',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                },
+              }}
+            >
+              <CloseRoundedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
       {/* Sync Badge if Member/Guest */}

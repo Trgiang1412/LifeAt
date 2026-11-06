@@ -8,25 +8,13 @@ import {
   Typography,
   Button,
   Chip,
-  Paper,
   Avatar,
   CircularProgress,
-  Alert,
-  Tooltip,
 } from '@mui/material';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import PublicRoundedIcon from '@mui/icons-material/PublicRounded';
-import LocalCafeRoundedIcon from '@mui/icons-material/LocalCafeRounded';
-import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
-import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded';
-import StoreRoundedIcon from '@mui/icons-material/StoreRounded';
-import ApartmentRoundedIcon from '@mui/icons-material/ApartmentRounded';
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
-import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded';
 import StarsRoundedIcon from '@mui/icons-material/StarsRounded';
-import SendRoundedIcon from '@mui/icons-material/SendRounded';
-import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import confetti from 'canvas-confetti';
 import AuthGuard from '@/components/auth/AuthGuard';
 import { useAuth } from '@/context/AuthContext';
@@ -43,7 +31,8 @@ const IsometricWorld = dynamic(() => import('@/components/isometric/IsometricWor
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        height: '620px',
+        height: '100%',
+        minHeight: '620px',
         gap: 2,
         backgroundColor: '#07090e',
       }}
@@ -85,7 +74,6 @@ interface DialogueNodeData {
 
 function EnglishWorldContent() {
   const { user, token, refreshUser } = useAuth();
-  const [activeLocation, setActiveLocation] = useState<'city' | 'cafe' | 'house' | 'academy' | 'mart'>('city');
   const [isDialogueModalOpen, setIsDialogueModalOpen] = useState(false);
   const [currentNode, setCurrentNode] = useState<DialogueNodeData | null>(null);
   const [loadingDialogue, setLoadingDialogue] = useState(false);
@@ -127,7 +115,7 @@ function EnglishWorldContent() {
 
   // Handle player selecting an option in the dialogue graph
   const handleSelectOption = async (option: DialogueOption) => {
-    if (submittingOption) return; // Prevent double click
+    if (submittingOption) return;
     setSubmittingOption(true);
 
     try {
@@ -139,114 +127,100 @@ function EnglishWorldContent() {
         },
         body: JSON.stringify({ maLuaChon: option.maLuaChon }),
       });
+      const data = await res.json();
 
-      const result = await res.json();
-
-      if (result.thanhCong) {
-        if (result.laDapAnDung) {
+      if (data.thanhCong) {
+        if (data.ketQuaLuaChon?.laDapAnDung) {
           soundEngine.playChime?.();
           confetti({
-            particleCount: 60,
+            particleCount: 50,
             spread: 60,
             origin: { y: 0.7 },
           });
-        }
-
-        setFeedback({
-          success: result.laDapAnDung,
-          message: result.thongDiep,
-          nhanXet: result.nhanXetNguPhapCefr,
-          coins: result.phanThuong?.tienXuCong || 0,
-          exp: result.phanThuong?.diemKinhNghiemCong || 0,
-        });
-
-        // Refresh user's balance and EXP
-        await refreshUser();
-
-        // Update current node to next node if available
-        if (result.duLieuNutTiepTheo) {
-          setCurrentNode(result.duLieuNutTiepTheo);
+          setFeedback({
+            success: true,
+            message: 'Chính xác! Lựa chọn giao tiếp rất tự nhiên và đúng chuẩn ngữ cảnh.',
+            nhanXet: data.ketQuaLuaChon.nhanXetNguPhapCefr || '',
+            coins: data.ketQuaLuaChon.phanThuongNhanDuoc?.tienXuCong || 0,
+            exp: data.ketQuaLuaChon.phanThuongNhanDuoc?.diemKinhNghiemCong || 0,
+          });
         } else {
-          // Finished conversation
-          setCurrentNode((prev) => (prev ? { ...prev, laNutKetThuc: true, danhSachLuaChon: [] } : null));
+          setFeedback({
+            success: false,
+            message: 'Chưa chính xác! Câu trả lời này chưa tối ưu hoặc chưa đúng chuẩn ngữ pháp giao tiếp.',
+            nhanXet: data.ketQuaLuaChon?.nhanXetNguPhapCefr || 'Hãy thử lại với câu diễn đạt lịch sự hơn.',
+            coins: 0,
+            exp: 0,
+          });
         }
-      } else {
-        setFeedback({
-          success: false,
-          message: result.thongDiep || 'Không thể thực hiện lựa chọn.',
-          nhanXet: result.maLoi === 'CEFR_LEVEL_INSUFFICIENT' ? 'Yêu cầu nâng cấp trình độ CEFR cao hơn!' : '',
-          coins: 0,
-          exp: 0,
-        });
+
+        if (data.nutKeTiep) {
+          setCurrentNode(data.nutKeTiep);
+        }
+
+        refreshUser();
       }
-    } catch (err: any) {
-      setFeedback({
-        success: false,
-        message: err.message || 'Lỗi mạng khi gửi phản hồi.',
-        nhanXet: '',
-        coins: 0,
-        exp: 0,
-      });
+    } catch (err) {
+      console.error('Lỗi gửi lựa chọn:', err);
     } finally {
       setSubmittingOption(false);
     }
   };
 
+  const userCoins = user?.tien || 0;
+  const userExp = (user as any)?.diemKinhNghiem || 0;
+  const userCefr = (user as any)?.trinhDoTiengAnh || 'A1';
+
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        height: '100vh',
         width: '100vw',
-        backgroundColor: '#0a0d17',
-        backgroundImage:
-          'radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.08) 0%, transparent 40%), radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.12) 0%, transparent 50%)',
+        backgroundColor: '#07090e',
         color: '#f8fafc',
         display: 'flex',
         flexDirection: 'column',
-        overflowX: 'hidden',
+        overflow: 'hidden',
       }}
     >
-      {/* Top Header */}
+      {/* Top Header Navigation */}
       <Box
-        component="header"
         sx={{
+          height: 64,
+          px: { xs: 2, md: 4 },
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          px: { xs: 2, md: 4 },
-          py: 2,
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          background: 'rgba(15, 23, 42, 0.85)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          backgroundColor: 'rgba(15, 23, 42, 0.8)',
           backdropFilter: 'blur(20px)',
-          position: 'sticky',
-          top: 0,
           zIndex: 50,
+          flexShrink: 0,
         }}
       >
-        {/* Left: Back button & World Title */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Button
-            component={Link}
-            href="/"
-            size="small"
-            startIcon={<ArrowBackRoundedIcon />}
-            sx={{
-              color: '#94a3b8',
-              backgroundColor: 'rgba(255, 255, 255, 0.06)',
-              borderRadius: 3,
-              px: 2,
-              '&:hover': {
-                color: '#fff',
-                backgroundColor: 'rgba(255, 255, 255, 0.12)',
-              },
-            }}
-          >
-            Quay lại phòng học
-          </Button>
+          <Link href="/" style={{ textDecoration: 'none' }}>
+            <Button
+              size="small"
+              startIcon={<ArrowBackRoundedIcon />}
+              sx={{
+                color: '#94a3b8',
+                borderRadius: 2,
+                fontSize: '0.82rem',
+                textTransform: 'none',
+                fontWeight: 600,
+                '&:hover': { color: '#f8fafc', backgroundColor: 'rgba(255, 255, 255, 0.08)' },
+              }}
+            >
+              Quay lại phòng học
+            </Button>
+          </Link>
+
+          <Box sx={{ height: 20, width: '1px', backgroundColor: 'rgba(255, 255, 255, 0.15)' }} />
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <PublicRoundedIcon sx={{ color: '#38bdf8', fontSize: 26 }} />
-            <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
+            <PublicRoundedIcon sx={{ color: '#38bdf8', fontSize: 22 }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#f8fafc', letterSpacing: 0.5 }}>
               The English-speaking World
             </Typography>
             <Chip
@@ -254,36 +228,52 @@ function EnglishWorldContent() {
               size="small"
               sx={{
                 height: 20,
-                fontSize: '0.65rem',
+                fontSize: '0.68rem',
                 fontWeight: 700,
-                backgroundColor: 'rgba(56, 189, 248, 0.18)',
+                backgroundColor: 'rgba(56, 189, 248, 0.15)',
                 color: '#38bdf8',
                 border: '1px solid rgba(56, 189, 248, 0.3)',
+                display: { xs: 'none', sm: 'inline-flex' },
               }}
             />
           </Box>
         </Box>
 
-        {/* Right: Player Economy & CEFR Profile */}
+        {/* Player Stats Bar */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Chip
-            label="CEFR: A2"
+            label={`🏡 ${user?.nhaNguoiChoi?.loaiNha || 'Nhà Cấp 4 Mái Ngói'}`}
             size="small"
             sx={{
-              fontWeight: 800,
+              height: 24,
               fontSize: '0.72rem',
-              backgroundColor: 'rgba(16, 185, 129, 0.18)',
-              color: '#34d399',
-              border: '1px solid rgba(16, 185, 129, 0.35)',
+              fontWeight: 800,
+              backgroundColor: 'rgba(239, 68, 68, 0.16)',
+              color: '#fca5a5',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              display: { xs: 'none', md: 'inline-flex' },
             }}
           />
           <Chip
-            icon={<StarsRoundedIcon sx={{ fontSize: '15px !important', color: '#818cf8 !important' }} />}
-            label="150 EXP"
+            label={`CEFR: ${userCefr}`}
             size="small"
             sx={{
-              fontWeight: 700,
+              height: 24,
               fontSize: '0.72rem',
+              fontWeight: 800,
+              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+              color: '#34d399',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+            }}
+          />
+          <Chip
+            icon={<StarsRoundedIcon sx={{ fontSize: '15px !important', color: '#c7d2fe !important' }} />}
+            label={`${userExp} EXP`}
+            size="small"
+            sx={{
+              height: 24,
+              fontSize: '0.72rem',
+              fontWeight: 700,
               backgroundColor: 'rgba(99, 102, 241, 0.18)',
               color: '#c7d2fe',
               border: '1px solid rgba(99, 102, 241, 0.3)',
@@ -291,12 +281,13 @@ function EnglishWorldContent() {
           />
           <Chip
             icon={<AccountBalanceWalletRoundedIcon sx={{ fontSize: '14px !important', color: '#fbbf24 !important' }} />}
-            label={`${user?.tien ?? 100} Xu`}
+            label={`${userCoins} Xu`}
             size="small"
             sx={{
-              fontWeight: 700,
+              height: 24,
               fontSize: '0.72rem',
-              backgroundColor: 'rgba(251, 191, 36, 0.18)',
+              fontWeight: 700,
+              backgroundColor: 'rgba(245, 158, 11, 0.15)',
               color: '#fbbf24',
               border: '1px solid rgba(251, 191, 36, 0.35)',
             }}
@@ -315,526 +306,24 @@ function EnglishWorldContent() {
         </Box>
       </Box>
 
-      {/* Main Content Area: 3D Isometric World Grid & Locations */}
+      {/* Main 3D Isometric World Metaverse (Full Viewport) */}
       <Box
         sx={{
           flex: 1,
-          p: { xs: 2, md: 4 },
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', lg: '340px 1fr' },
-          gap: 3,
+          position: 'relative',
+          width: '100%',
+          height: 'calc(100vh - 64px)',
+          overflow: 'hidden',
+          backgroundColor: '#07090e',
         }}
       >
-        {/* Left Column: Locations & House Overview */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#94a3b8', letterSpacing: 1 }}>
-            ĐỊA ĐIỂM THẾ GIỚI TIẾNG ANH (LOCATIONS)
-          </Typography>
-
-          {/* Location 0: Toàn cảnh Đô thị 3D Isometric */}
-          <Paper
-            onClick={() => setActiveLocation('city')}
-            sx={{
-              p: 2,
-              borderRadius: 3.5,
-              cursor: 'pointer',
-              backgroundColor: activeLocation === 'city' ? 'rgba(56, 189, 248, 0.18)' : 'rgba(255, 255, 255, 0.04)',
-              border: activeLocation === 'city' ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
-              boxShadow: activeLocation === 'city' ? '0 0 20px rgba(56, 189, 248, 0.25)' : 'none',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              '&:hover': { transform: 'translateY(-2px)', backgroundColor: 'rgba(56, 189, 248, 0.15)' },
-            }}
-          >
-            <Box
-              sx={{
-                width: 48,
-                height: 48,
-                borderRadius: 2.5,
-                backgroundColor: 'rgba(56, 189, 248, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#38bdf8',
-              }}
-            >
-              <ApartmentRoundedIcon />
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#f8fafc' }}>
-                  Thành phố 3D Isometric
-                </Typography>
-                <Chip
-                  label="R3F 2.5D"
-                  size="small"
-                  sx={{
-                    height: 18,
-                    fontSize: '0.62rem',
-                    fontWeight: 800,
-                    backgroundColor: '#38bdf8',
-                    color: '#07090e',
-                  }}
-                />
-              </Box>
-              <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                Chu kỳ Ngày/Đêm • Shader Facade • Bloom HDR
-              </Typography>
-            </Box>
-          </Paper>
-
-          {/* Location 1: London Focus Cafe */}
-          <Paper
-            onClick={() => setActiveLocation('cafe')}
-            sx={{
-              p: 2,
-              borderRadius: 3.5,
-              cursor: 'pointer',
-              backgroundColor: activeLocation === 'cafe' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-              border: activeLocation === 'cafe' ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              '&:hover': { transform: 'translateY(-2px)', backgroundColor: 'rgba(56, 189, 248, 0.18)' },
-            }}
-          >
-            <Box
-              sx={{
-                width: 48,
-                height: 48,
-                borderRadius: 2.5,
-                backgroundColor: 'rgba(217, 119, 6, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#f59e0b',
-              }}
-            >
-              <LocalCafeRoundedIcon />
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#f8fafc' }}>
-                London Focus Cafe
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                Hội thoại đặt món thực tế với NPC Emma (A2)
-              </Typography>
-            </Box>
-          </Paper>
-
-          {/* Location 2: Player House (NhaNguoiChoi) */}
-          <Paper
-            onClick={() => setActiveLocation('house')}
-            sx={{
-              p: 2,
-              borderRadius: 3.5,
-              cursor: 'pointer',
-              backgroundColor: activeLocation === 'house' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-              border: activeLocation === 'house' ? '1.5px solid #818cf8' : '1px solid rgba(255, 255, 255, 0.08)',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              '&:hover': { transform: 'translateY(-2px)' },
-            }}
-          >
-            <Box
-              sx={{
-                width: 48,
-                height: 48,
-                borderRadius: 2.5,
-                backgroundColor: 'rgba(99, 102, 241, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#818cf8',
-              }}
-            >
-              <HomeRoundedIcon />
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#f8fafc' }}>
-                My House (Nhà Người Chơi)
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                Lưới nội thất 10x10 • Cấp nhà 1 • Gara
-              </Typography>
-            </Box>
-          </Paper>
-
-          {/* Location 3: Oxford English Academy */}
-          <Paper
-            onClick={() => setActiveLocation('academy')}
-            sx={{
-              p: 2,
-              borderRadius: 3.5,
-              cursor: 'pointer',
-              backgroundColor: activeLocation === 'academy' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-              border: activeLocation === 'academy' ? '1.5px solid #34d399' : '1px solid rgba(255, 255, 255, 0.08)',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              '&:hover': { transform: 'translateY(-2px)' },
-            }}
-          >
-            <Box
-              sx={{
-                width: 48,
-                height: 48,
-                borderRadius: 2.5,
-                backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#34d399',
-              }}
-            >
-              <SchoolRoundedIcon />
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#f8fafc' }}>
-                Oxford English Academy
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                Thi nâng chuẩn CEFR: A1 → B1 → C2
-              </Typography>
-            </Box>
-          </Paper>
-
-          {/* Location 4: Times Square Mart */}
-          <Paper
-            onClick={() => setActiveLocation('mart')}
-            sx={{
-              p: 2,
-              borderRadius: 3.5,
-              cursor: 'pointer',
-              backgroundColor: activeLocation === 'mart' ? 'rgba(236, 72, 153, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-              border: activeLocation === 'mart' ? '1.5px solid #f472b6' : '1px solid rgba(255, 255, 255, 0.08)',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              '&:hover': { transform: 'translateY(-2px)' },
-            }}
-          >
-            <Box
-              sx={{
-                width: 48,
-                height: 48,
-                borderRadius: 2.5,
-                backgroundColor: 'rgba(236, 72, 153, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#f472b6',
-              }}
-            >
-              <StoreRoundedIcon />
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#f8fafc' }}>
-                Times Square Furniture Mart
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                Mua sắm vật phẩm & nội thất trang trí nhà
-              </Typography>
-            </Box>
-          </Paper>
-        </Box>
-
-        {/* Right Column: Interactive 3D World Stage & Dialogue Graph Window */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {activeLocation === 'city' && (
-            <Paper
-              elevation={10}
-              sx={{
-                borderRadius: 4,
-                overflow: 'hidden',
-                height: { xs: '560px', md: '700px' },
-                position: 'relative',
-                backgroundColor: '#07090e',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
-              }}
-            >
-              <IsometricWorld
-                onOpenDialogue={(npcId) => {
-                  if (npcId === 'NPC_EMMA_LONDON_CAFE') {
-                    setIsDialogueModalOpen(true);
-                  } else if (npcId === 'NPC_ALEX_ACADEMY') {
-                    setActiveLocation('academy');
-                  }
-                }}
-              />
-            </Paper>
-          )}
-
-          {activeLocation === 'cafe' && (
-            <Paper
-              elevation={8}
-              sx={{
-                p: { xs: 2.5, md: 3.5 },
-                borderRadius: 4,
-                backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                backdropFilter: 'blur(28px)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2.5,
-              }}
-            >
-              {/* Dialogue Header */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Avatar
-                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=60"
-                    sx={{ width: 44, height: 44, border: '2px solid #38bdf8' }}
-                  />
-                  <Box>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#f8fafc' }}>
-                      {currentNode?.tenNguoiNoi || 'Emma (London Barista)'}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#38bdf8', fontWeight: 600 }}>
-                      NPC Hội Thoại • Cấp độ CEFR A2
-                    </Typography>
-                  </Box>
-                </Box>
-
-                <Tooltip title="Tải lại đối thoại">
-                  <Button
-                    size="small"
-                    onClick={loadDialogue}
-                    startIcon={<RefreshRoundedIcon />}
-                    sx={{ color: '#94a3b8', fontSize: '0.75rem' }}
-                  >
-                    Bắt đầu lại
-                  </Button>
-                </Tooltip>
-              </Box>
-
-              {/* NPC Dialogue Bubble */}
-              {loadingDialogue ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                  <CircularProgress size={32} sx={{ color: '#38bdf8' }} />
-                </Box>
-              ) : (
-                <Box
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 3.5,
-                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                    border: '1px solid rgba(56, 189, 248, 0.25)',
-                    position: 'relative',
-                  }}
-                >
-                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#f8fafc', fontSize: '1.05rem', lineHeight: 1.6 }}>
-                    "{currentNode?.noiDungTiengAnh || 'Good afternoon! Welcome to the London Focus Cafe. What can I get started for you today?'}"
-                  </Typography>
-                </Box>
-              )}
-
-              {/* Feedback alert after picking an option */}
-              {feedback && (
-                <Alert
-                  severity={feedback.success ? 'success' : 'error'}
-                  icon={feedback.success ? <CheckCircleRoundedIcon /> : <CancelRoundedIcon />}
-                  sx={{
-                    borderRadius: 3,
-                    fontSize: '0.85rem',
-                    '& .MuiAlert-message': { width: '100%' },
-                  }}
-                >
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                    {feedback.message}
-                  </Typography>
-                  {feedback.nhanXet && (
-                    <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'inherit' }}>
-                      {feedback.nhanXet}
-                    </Typography>
-                  )}
-                  {feedback.success && (feedback.coins > 0 || feedback.exp > 0) && (
-                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                      <Chip
-                        size="small"
-                        label={`+${feedback.coins} Xu`}
-                        sx={{ height: 20, fontSize: '0.68rem', backgroundColor: 'rgba(251, 191, 36, 0.25)', color: '#fbbf24', fontWeight: 700 }}
-                      />
-                      <Chip
-                        size="small"
-                        label={`+${feedback.exp} EXP`}
-                        sx={{ height: 20, fontSize: '0.68rem', backgroundColor: 'rgba(99, 102, 241, 0.25)', color: '#c7d2fe', fontWeight: 700 }}
-                      />
-                    </Box>
-                  )}
-                </Alert>
-              )}
-
-              {/* Player Branching Dialogue Options */}
-              {currentNode && !currentNode.laNutKetThuc && (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                  <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 700, letterSpacing: 0.8 }}>
-                    LỰA CHỌN CÂU PHẢN HỒI TIẾNG ANH (DIRECTED GRAPH OPTIONS):
-                  </Typography>
-
-                  {currentNode.danhSachLuaChon.map((option, idx) => (
-                    <Button
-                      key={option.maLuaChon}
-                      variant="outlined"
-                      disabled={submittingOption}
-                      onClick={() => handleSelectOption(option)}
-                      startIcon={<SendRoundedIcon sx={{ fontSize: '1rem !important', transform: 'rotate(-30deg)' }} />}
-                      sx={{
-                        justifyContent: 'flex-start',
-                        textAlign: 'left',
-                        py: 1.5,
-                        px: 2,
-                        borderRadius: 3,
-                        fontSize: '0.9rem',
-                        fontWeight: 600,
-                        color: '#f8fafc',
-                        backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                        borderColor: 'rgba(255, 255, 255, 0.15)',
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          backgroundColor: 'rgba(56, 189, 248, 0.15)',
-                          borderColor: '#38bdf8',
-                          transform: 'translateX(4px)',
-                        },
-                      }}
-                    >
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {idx + 1}. {option.noiDungTiengAnh}
-                        </Typography>
-                      </Box>
-                    </Button>
-                  ))}
-                </Box>
-              )}
-
-              {currentNode?.laNutKetThuc && (
-                <Box sx={{ textAlign: 'center', py: 2 }}>
-                  <Typography variant="subtitle2" sx={{ color: '#34d399', fontWeight: 700 }}>
-                    ✨ Cuộc hội thoại hoàn tất! Bạn đã nhận đủ phần thưởng và kinh nghiệm.
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    onClick={loadDialogue}
-                    sx={{ mt: 1.5, backgroundColor: '#6366f1', borderRadius: 2.5 }}
-                  >
-                    Trò chuyện lại
-                  </Button>
-                </Box>
-              )}
-            </Paper>
-          )}
-
-          {activeLocation === 'house' && (
-            <Paper
-              elevation={8}
-              sx={{
-                p: 3,
-                borderRadius: 4,
-                backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-              }}
-            >
-              <Typography variant="h6" sx={{ fontWeight: 800, mb: 1, color: '#818cf8' }}>
-                Hệ Sinh Thái Nhà Ở Người Chơi (PlayerHouse Schema)
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#94a3b8', mb: 2 }}>
-                Mô hình ngoại thất: <strong>COZY COTTAGE V1</strong> • Lưới nội thất: <strong>10 x 10</strong> ô
-              </Typography>
-
-              {/* 10x10 Isometric Grid Mockup */}
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(10, 1fr)',
-                  gap: 0.5,
-                  p: 2,
-                  borderRadius: 3,
-                  backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                  maxWidth: 420,
-                  mx: 'auto',
-                }}
-              >
-                {Array.from({ length: 100 }).map((_, i) => (
-                  <Box
-                    key={i}
-                    sx={{
-                      aspectRatio: '1',
-                      borderRadius: 1,
-                      backgroundColor: i === 24 || i === 45 ? '#818cf8' : 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(255, 255, 255, 0.05)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.6rem',
-                    }}
-                  >
-                    {i === 24 ? '🪑' : i === 45 ? '🪴' : ''}
-                  </Box>
-                ))}
-              </Box>
-            </Paper>
-          )}
-
-          {activeLocation === 'academy' && (
-            <Paper
-              elevation={8}
-              sx={{
-                p: 3,
-                borderRadius: 4,
-                backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-              }}
-            >
-              <Typography variant="h6" sx={{ fontWeight: 800, mb: 1, color: '#34d399' }}>
-                Oxford English Academy (CEFR Framework)
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#94a3b8', mb: 2 }}>
-                Đạt chứng chỉ CEFR cao hơn để mở khóa các phân nhánh hội thoại phức tạp và nhận mức thù lao xu cao hơn.
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {(['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const).map((level) => (
-                  <Chip
-                    key={level}
-                    label={`Level ${level}`}
-                    sx={{
-                      fontWeight: 700,
-                      backgroundColor: level === 'A2' ? '#10b981' : 'rgba(255, 255, 255, 0.08)',
-                      color: '#fff',
-                    }}
-                  />
-                ))}
-              </Box>
-            </Paper>
-          )}
-
-          {activeLocation === 'mart' && (
-            <Paper
-              elevation={8}
-              sx={{
-                p: 3,
-                borderRadius: 4,
-                backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-              }}
-            >
-              <Typography variant="h6" sx={{ fontWeight: 800, mb: 1, color: '#f472b6' }}>
-                Times Square Mart (Material & Furniture)
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#94a3b8' }}>
-                Dùng số dư xu (`tien`) tích lũy được từ các cuộc đối thoại tiếng Anh thành công để mua sắm vật phẩm nội thất cho ngôi nhà của bạn.
-              </Typography>
-            </Paper>
-          )}
-        </Box>
+        <IsometricWorld
+          onOpenDialogue={(npcId) => {
+            if (npcId === 'NPC_EMMA_LONDON_CAFE' || npcId === 'NPC_ALEX_ACADEMY') {
+              setIsDialogueModalOpen(true);
+            }
+          }}
+        />
       </Box>
 
       {/* 
@@ -842,12 +331,9 @@ function EnglishWorldContent() {
         Tích hợp TTS tự động phát âm, nút Replay âm thanh và hiệu ứng Sound Wave Indicator
       */}
       <DialogueOverlay
-        isOpen={isDialogueModalOpen || activeLocation === 'cafe'}
+        isOpen={isDialogueModalOpen}
         onClose={() => {
           setIsDialogueModalOpen(false);
-          if (activeLocation === 'cafe') {
-            setActiveLocation('city');
-          }
         }}
         npcName={currentNode?.tenNguoiNoi || 'Emma'}
         npcRole="London Focus Cafe • Barista A2"
@@ -869,4 +355,3 @@ export default function EnglishWorldPage() {
     </AuthGuard>
   );
 }
-

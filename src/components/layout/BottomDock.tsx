@@ -29,6 +29,7 @@ interface BottomDockProps {
   onOpenSettings: () => void;
   isZenMode: boolean;
   onToggleZenMode: () => void;
+  isTimerMinimized?: boolean;
 }
 
 export default function BottomDock({
@@ -38,6 +39,7 @@ export default function BottomDock({
   onOpenSettings,
   isZenMode,
   onToggleZenMode,
+  isTimerMinimized,
 }: BottomDockProps) {
   const router = useRouter();
 
@@ -127,15 +129,32 @@ export default function BottomDock({
 
         {/* Widgets Toggles */}
         {dockItems.map((item) => {
-          const isActive = activeWidgets.has(item.id);
+          const isTimer = item.id === 'timer';
+          const isWidgetOpen = activeWidgets.has(item.id);
+          const isMinimized = isTimer && isTimerMinimized;
+          const isActive = isWidgetOpen && !isMinimized;
+
+          let tooltipTitle = item.label;
+          if (isTimer && isWidgetOpen && isMinimized) {
+            tooltipTitle = 'Pomodoro Timer (Đang chạy ngầm - Nhấp để hiện)';
+          }
+
           return (
-            <Tooltip key={item.id} title={item.label} placement="top">
+            <Tooltip key={item.id} title={tooltipTitle} placement="top">
               <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <IconButton
                   onClick={() => onToggleWidget(item.id)}
                   sx={{
-                    color: isActive ? item.color : 'rgba(255, 255, 255, 0.65)',
-                    backgroundColor: isActive ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                    color: isActive
+                      ? item.color
+                      : isMinimized
+                      ? '#a5b4fc'
+                      : 'rgba(255, 255, 255, 0.65)',
+                    backgroundColor: isActive
+                      ? 'rgba(255, 255, 255, 0.1)'
+                      : isMinimized
+                      ? 'rgba(129, 140, 248, 0.18)'
+                      : 'transparent',
                     p: 1.2,
                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                     '&:hover': {
@@ -148,7 +167,7 @@ export default function BottomDock({
                   {item.icon}
                 </IconButton>
                 {/* Active indicator dot */}
-                {isActive && (
+                {isWidgetOpen && (
                   <Box
                     sx={{
                       position: 'absolute',
@@ -156,8 +175,9 @@ export default function BottomDock({
                       width: 4,
                       height: 4,
                       borderRadius: '50%',
-                      backgroundColor: item.color,
+                      backgroundColor: isMinimized ? '#a5b4fc' : item.color,
                       boxShadow: `0 0 8px ${item.color}`,
+                      opacity: isMinimized ? 0.7 : 1,
                     }}
                   />
                 )}

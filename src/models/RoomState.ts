@@ -21,6 +21,8 @@ export interface IRoomState extends Document {
   hostId: string;
   hostName: string;
   spaceId: string;
+  currentSpace?: any;
+  spaceStartedAt?: number;
   timer: IRoomTimer;
   participants: IRoomParticipant[];
   createdAt: Date;
@@ -81,7 +83,15 @@ const RoomStateSchema = new Schema<IRoomState>(
     },
     spaceId: {
       type: String,
-      default: 'yt-lofi-room-chill',
+      default: 'yt-nestled-above-city',
+    },
+    currentSpace: {
+      type: Schema.Types.Mixed,
+      default: null,
+    },
+    spaceStartedAt: {
+      type: Number,
+      default: () => Date.now(),
     },
     timer: {
       type: RoomTimerSchema,
