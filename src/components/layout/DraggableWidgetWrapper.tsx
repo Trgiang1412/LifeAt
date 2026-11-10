@@ -71,6 +71,12 @@ export default function DraggableWidgetWrapper({
     if (e.button !== 0) return;
 
     const target = e.target as HTMLElement;
+
+    // Không can thiệp nếu sự kiện bắt nguồn từ Khung Co-Working Video Hub
+    if (target.closest('[data-coworking-hub="true"]')) {
+      return;
+    }
+
     // Do NOT drag when interacting with buttons, inputs, sliders, chips, links, or icons
     if (
       target.closest(

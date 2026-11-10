@@ -1,3 +1,22 @@
+import {
+  MULTI_SOURCE_ENGLISH_BANK,
+  ENGLISH_DATABASE_SOURCES,
+  pickNonRepeatingMultiSourceQuestion,
+  markQuestionAsAsked,
+  shuffleArray,
+  type EnglishDatabaseSourceId,
+  type MultiSourceEnglishItem,
+} from './englishQuestionDatabase';
+
+export {
+  MULTI_SOURCE_ENGLISH_BANK,
+  ENGLISH_DATABASE_SOURCES,
+  pickNonRepeatingMultiSourceQuestion,
+  markQuestionAsAsked,
+  type EnglishDatabaseSourceId,
+  type MultiSourceEnglishItem,
+};
+
 export interface FurnitureCatalogItem {
   maVatPham: string;
   tenVatPham: string;
@@ -9,6 +28,95 @@ export interface FurnitureCatalogItem {
   defaultZ: number;
   isStarter?: boolean;
 }
+
+export type ModernHouseStyleId =
+  | 'traditional'
+  | 'minimalist'
+  | 'eco_garden'
+  | 'cyber_loft'
+  | 'luxury_mansion';
+
+export interface ModernHouseModelItem {
+  id: string;
+  styleId: ModernHouseStyleId;
+  name: string;
+  englishName: string;
+  priceCoins: number;
+  icon: string;
+  description: string;
+  tier: number;
+  defaultWallColor: string;
+  defaultRoofColor: string;
+  highlights: string[];
+}
+
+export const MODERN_HOUSE_MODELS: ModernHouseModelItem[] = [
+  {
+    id: 'HOUSE_CAP4_STARTER',
+    styleId: 'traditional',
+    name: 'Nhà Cấp 4 Mái Ngói Đỏ (Mặc định)',
+    englishName: 'Traditional Heritage Red-Tile House',
+    priceCoins: 0,
+    icon: '🏡',
+    description: 'Kiến trúc nhà cấp 4 ấm cúng với sân gạch đỏ Hạ Long, hiên gỗ mộc mạc và mái ngói truyền thống',
+    tier: 1,
+    defaultWallColor: '#f5ebd6',
+    defaultRoofColor: '#b93829',
+    highlights: ['Sân gạch đỏ 11m × 11m', 'Mái ngói nung cổ điển', 'Cửa gỗ mộc mạc', 'Miễn phí tân thủ'],
+  },
+  {
+    id: 'HOUSE_MODERN_MINIMALIST',
+    styleId: 'minimalist',
+    name: 'Biệt Thự Phố Tối Giản Scandinavian',
+    englishName: 'Scandinavian Minimalist Townhouse',
+    priceCoins: 450,
+    icon: '🏘️',
+    description: 'Thiết kế hình khối vuông vức Bắc Âu 2 tầng, vách kính Low-E tràn viền, ban công đón gió và đèn hắt LED',
+    tier: 2,
+    defaultWallColor: '#ffffff',
+    defaultRoofColor: '#334155',
+    highlights: ['Khối hộp 2 tầng hiện đại', 'Cửa kính Low-E tràn viền', 'Ban công kính chịu lực', 'Đèn LED hắt tường'],
+  },
+  {
+    id: 'HOUSE_ECO_GARDEN',
+    styleId: 'eco_garden',
+    name: 'Biệt Thự Vườn Sinh Thái Eco Modernist',
+    englishName: 'Eco Modernist Botanical Villa',
+    priceCoins: 850,
+    icon: '🌿',
+    description: 'Biệt thự xanh hòa mình với thiên nhiên, ốp gỗ Conwood nhiệt đới, hồ cá Koi trước sân và giàn hoa Pergola',
+    tier: 3,
+    defaultWallColor: '#f1f5f9',
+    defaultRoofColor: '#0f766e',
+    highlights: ['Ốp gỗ Conwood sang trọng', 'Hồ cá Koi thư giãn trước sân', 'Giàn hoa Pergola râm mát', 'Mái vát phong cách Nhật'],
+  },
+  {
+    id: 'HOUSE_CYBER_LOFT',
+    styleId: 'cyber_loft',
+    name: 'Penthouse Kính Tương Lai Cyber Loft 2077',
+    englishName: 'Cyberpunk Neon Glass Loft 2077',
+    priceCoins: 1600,
+    icon: '🏢',
+    description: 'Căn hộ thông minh vách kính phản quang Titan, dải đèn LED Neon phát sáng rực rỡ và sân thượng ngắm toàn cảnh thành phố',
+    tier: 4,
+    defaultWallColor: '#0f172a',
+    defaultRoofColor: '#6366f1',
+    highlights: ['Vách kính phản quang Titan', 'Dải LED Neon phát sáng ban đêm', 'Sân thượng Panorama City View', 'Kiến trúc viễn tưởng High-Tech'],
+  },
+  {
+    id: 'HOUSE_LUXURY_MANSION',
+    styleId: 'luxury_mansion',
+    name: 'Dinh Thự Triệu Đô Luxury Beverly Hills',
+    englishName: 'Beverly Hills Ultra-Luxury Mansion',
+    priceCoins: 3200,
+    icon: '🏰',
+    description: 'Siêu dinh thự đồi Beverly Hills đẳng cấp giới thượng lưu: Tường ốp đá Marble trắng Carrera, bể bơi vô cực ngập tràn làn nước xanh và gara kính siêu xe',
+    tier: 5,
+    defaultWallColor: '#f8fafc',
+    defaultRoofColor: '#1e293b',
+    highlights: ['Đá Marble trắng Carrera quý tộc', 'Bể bơi vô cực ngoài sân cực chill', 'Gara kính trưng bày siêu xe', 'Mái bằng bê tông đúc xếp tầng'],
+  },
+];
 
 export const FURNITURE_CATALOG: FurnitureCatalogItem[] = [
   {
@@ -156,6 +264,96 @@ export const FURNITURE_CATALOG: FurnitureCatalogItem[] = [
     moTa: 'Đèn đứng chụp vải tỏa ánh sáng vàng ấm áp góc phòng',
     defaultX: 4,
     defaultZ: 2,
+  },
+  {
+    maVatPham: 'SOFA_GAMING_RGB',
+    tenVatPham: 'Bộ Bàn Ghế Gaming RGB Streamer',
+    danhMuc: 'goc_hoc_tap',
+    giaXu: 210,
+    icon: '🎮',
+    moTa: 'Bàn máy tính đôi màn hình cong kèm dải đèn LED RGB cực chất',
+    defaultX: 7,
+    defaultZ: 4,
+  },
+  {
+    maVatPham: 'TU_QUAN_AO_KINH',
+    tenVatPham: 'Tủ Kính Trưng Bày Thời Trang Luxury',
+    danhMuc: 'phong_ngu',
+    giaXu: 175,
+    icon: '👗',
+    moTa: 'Tủ quần áo cửa kính đèn LED trưng bày bộ sưu tập thời trang',
+    defaultX: 9,
+    defaultZ: 5,
+  },
+  {
+    maVatPham: 'MAY_PHA_CAFE_MINI',
+    tenVatPham: 'Quầy Bar & Máy Pha Espresso Tại Gia',
+    danhMuc: 'phong_khach',
+    giaXu: 155,
+    icon: '☕',
+    moTa: 'Quầy bar gỗ óc chó tích hợp máy pha cà phê Ý chuyên nghiệp',
+    defaultX: 1,
+    defaultZ: 2,
+  },
+  {
+    maVatPham: 'THAM_HOANG_GIA_DO',
+    tenVatPham: 'Thảm Nhung Đỏ Hoàng Gia Anh Quốc',
+    danhMuc: 'trang_tri',
+    giaXu: 110,
+    icon: '👑',
+    moTa: 'Thảm dệt nhung đỏ viền vàng kim tôn lên vẻ sang trọng cho căn phòng',
+    defaultX: 5,
+    defaultZ: 5,
+  },
+  {
+    maVatPham: 'TIVI_OLED_85_INCH',
+    tenVatPham: 'Smart TV OLED 85 Inch & Loa Soundbar',
+    danhMuc: 'phong_khach',
+    giaXu: 230,
+    icon: '🖥️',
+    moTa: 'Tivi màn hình phẳng 8K viền siêu mỏng kèm dàn loa vòm rạp hát',
+    defaultX: 3,
+    defaultZ: 8,
+  },
+  {
+    maVatPham: 'SOFA_CHUL_ITALY',
+    tenVatPham: 'Sofa Chữ L Da Bò Ý Cao Cấp',
+    danhMuc: 'phong_khach',
+    giaXu: 280,
+    icon: '🛋️',
+    moTa: 'Sofa bọc da thật nhập khẩu Ý phom rộng êm ái cho biệt thự hiện đại',
+    defaultX: 2,
+    defaultZ: 4,
+  },
+  {
+    maVatPham: 'BAN_AN_MARBLE',
+    tenVatPham: 'Bàn Đảo Bếp Đá Marble Trắng Carrera',
+    danhMuc: 'phong_khach',
+    giaXu: 240,
+    icon: '🍽️',
+    moTa: 'Bàn ăn đá cẩm thạch nguyên khối kèm 4 ghế bọc nỉ Bắc Âu',
+    defaultX: 1,
+    defaultZ: 6,
+  },
+  {
+    maVatPham: 'GHE_MASSAGE_AI',
+    tenVatPham: 'Ghế Massage Phi Hành Gia AI',
+    danhMuc: 'phong_ngu',
+    giaXu: 320,
+    icon: '💆',
+    moTa: 'Ghế massage không trọng lực tích hợp AI quét huyệt đạo tự động',
+    defaultX: 8,
+    defaultZ: 4,
+  },
+  {
+    maVatPham: 'DEN_CHUM_BAC_AU',
+    tenVatPham: 'Đèn Chùm Pha Lê Nghệ Thuật Bắc Âu',
+    danhMuc: 'trang_tri',
+    giaXu: 160,
+    icon: '✨',
+    moTa: 'Đèn chùm thả trần pha lê lấp lánh nâng tầm đẳng cấp không gian sống',
+    defaultX: 5,
+    defaultZ: 5,
   },
 ];
 
@@ -515,12 +713,51 @@ export const FISHING_ENGLISH_QUESTIONS: EnglishChallengeQuestion[] = [
     explanationVi:
       '[Destination B1 - Unit 42] Cụm động từ "get rid of something" có nghĩa là loại bỏ, thanh lý hoặc vứt bỏ những thứ không còn cần thiết.',
   },
+  // Bổ sung toàn bộ kho câu hỏi đa nguồn (Cambridge, Oxford 3000, IELTS, TOEIC, British Council, Destination B1/B2)
+  ...MULTI_SOURCE_ENGLISH_BANK.map(
+    (item): EnglishChallengeQuestion => ({
+      id: `fish_${item.id}`,
+      questionType:
+        item.category === 'culture_knowledge' ? 'knowledge' : item.questionType,
+      difficulty: item.difficulty,
+      cefr: item.cefr,
+      unitSource: `${ENGLISH_DATABASE_SOURCES[item.sourceId].shortBadge} • ${item.unitOrTopic}`,
+      prompt: item.promptEn,
+      hintVi: item.hintVi,
+      options: item.options,
+      correctAnswer: item.correctAnswer,
+      acceptedAnswers: item.acceptedAnswers,
+      explanationVi: item.explanationVi,
+    })
+  ),
 ];
 
 // ============================================================================
 // HỆ THỐNG 4 CỬA HÀNG THƯƠNG MẠI & VIỆC LÀM THÊM (CAFE, QUÁN ĂN, QUẦN ÁO, XE CỘ)
 // ============================================================================
 export type ShopVenueId = 'CAFE' | 'DINER' | 'CLOTHING' | 'CAR_SHOWROOM';
+
+export type AvatarTopStyle = 'streetwear' | 'suit' | 'hoodie' | 'royal' | 'cyberpunk';
+export type AvatarHatStyle = 'snapback' | 'crown' | 'cat_ears' | 'halo' | 'beret' | 'none';
+export type AvatarAccessoryStyle =
+  | 'headphones'
+  | 'crossbody_bag'
+  | 'angel_wings'
+  | 'cyber_wings'
+  | 'guitar_back'
+  | 'sunglasses'
+  | 'none';
+export type WorldVehicleType =
+  | 'none'
+  | 'skateboard'
+  | 'hoverboard'
+  | 'vespa'
+  | 'harley'
+  | 'motorbike'
+  | 'cybertruck'
+  | 'gclass'
+  | 'sportscar'
+  | 'rollsroyce';
 
 export interface ShopProductItem {
   id: string;
@@ -531,10 +768,18 @@ export interface ShopProductItem {
   icon: string;
   description: string;
   category: 'food_drink' | 'clothing' | 'vehicle';
-  // Thuộc tính trang bị nếu là quần áo hoặc xe cộ
+  brand?: string;
+  // Thuộc tính trang bị nếu là quần áo hoặc xe cộ (Hỗ trợ Mix & Match tự phối đồ)
   outfitColor?: string;
   hatColor?: string;
-  vehicleType?: 'skateboard' | 'vespa' | 'motorbike' | 'sportscar';
+  pantsColor?: string;
+  shoeColor?: string;
+  hairColor?: string;
+  avatarStyle?: AvatarTopStyle;
+  hatStyle?: AvatarHatStyle;
+  accessory?: AvatarAccessoryStyle;
+  vehicleType?: Exclude<WorldVehicleType, 'none'>;
+  vehicleColor?: string;
   speedBoost?: number;
 }
 
@@ -617,6 +862,36 @@ export const CITY_SHOPS_DATA: Record<ShopVenueId, CityShopVenueConfig> = {
         expReward: 25,
         icon: '🥐',
         description: 'Bánh nướng giòn rụm thơm lừng bơ tươi (+25 EXP)',
+        category: 'food_drink',
+      },
+      {
+        id: 'CAFE_TIRAMISU',
+        name: 'Bánh Tiramisu Cacao Ý',
+        englishName: 'Classic Italian Tiramisu',
+        priceCoins: 55,
+        expReward: 45,
+        icon: '🍰',
+        description: 'Bánh kem phô mai Mascarpone phủ bột Cacao nguyên chất (+45 EXP)',
+        category: 'food_drink',
+      },
+      {
+        id: 'CAFE_STRAWBERRY_SMOOTHIE',
+        name: 'Sinh Tố Dâu Tây Kem Tuyết',
+        englishName: 'Strawberry Cream Smoothie',
+        priceCoins: 50,
+        expReward: 40,
+        icon: '🍓',
+        description: 'Dâu tây Đà Lạt xay lạnh cùng kem tươi mát lành (+40 EXP)',
+        category: 'food_drink',
+      },
+      {
+        id: 'CAFE_EARL_GREY_TEA',
+        name: 'Trà Báước Anh Quốc & Bánh Macaron',
+        englishName: 'Royal Earl Grey & Macaron Set',
+        priceCoins: 65,
+        expReward: 55,
+        icon: '🫖',
+        description: 'Set trà chiều kiểu quý tộc London kèm bánh Macaron Pháp (+55 EXP)',
         category: 'food_drink',
       },
     ],
@@ -834,6 +1109,36 @@ export const CITY_SHOPS_DATA: Record<ShopVenueId, CityShopVenueConfig> = {
         description: 'Combo ăn nhẹ giòn tan (+20 EXP)',
         category: 'food_drink',
       },
+      {
+        id: 'DINER_LOBSTER_PASTA',
+        name: 'Mì Ý Tôm Hùm Sốt Kem Nấm Truffle',
+        englishName: 'Truffle Cream Lobster Spaghetti',
+        priceCoins: 115,
+        expReward: 95,
+        icon: '🍝',
+        description: 'Mì Ý thượng hạng sốt nấm Truffle đen và tôm hùm nướng (+95 EXP)',
+        category: 'food_drink',
+      },
+      {
+        id: 'DINER_BBQ_RIBS',
+        name: 'Sườn Nướng Tảng BBQ Texas',
+        englishName: 'Smoked Texas BBQ Pork Ribs',
+        priceCoins: 85,
+        expReward: 70,
+        icon: '🍖',
+        description: 'Sườn nướng hun khói gỗ sồi mềm mọng đậm vị (+70 EXP)',
+        category: 'food_drink',
+      },
+      {
+        id: 'DINER_SUNDAE_SHAKE',
+        name: 'Kem Sundae & Sữa Lắc Vani',
+        englishName: 'Vanilla Milkshake & Fudge Sundae',
+        priceCoins: 45,
+        expReward: 35,
+        icon: '🍨',
+        description: 'Tráng miệng ngọt ngào chuẩn phong cách Diner Mỹ (+35 EXP)',
+        category: 'food_drink',
+      },
     ],
     workScenarios: [
       {
@@ -1016,63 +1321,291 @@ export const CITY_SHOPS_DATA: Record<ShopVenueId, CityShopVenueConfig> = {
     products: [
       {
         id: 'OUTFIT_SKY_HOODIE',
-        name: 'Áo Hoodie Xanh Sky Play Together',
-        englishName: 'Sky Blue Casual Hoodie',
+        name: 'Set Hoodie Năng Động Sky Casual (Mặc định)',
+        englishName: 'Sky Blue Starter Casual Hoodie',
         priceCoins: 0,
         expReward: 0,
         icon: '👕',
-        description: 'Trang phục năng động mặc định của cư dân thành phố',
+        description: 'Trang phục khởi đầu trẻ trung kèm tai nghe DJ, túi đeo chéo & sneaker trắng',
         category: 'clothing',
+        brand: 'LifeAt Originals',
         outfitColor: '#38bdf8',
         hatColor: '#f59e0b',
+        pantsColor: '#1e293b',
+        shoeColor: '#ffffff',
+        avatarStyle: 'streetwear',
+        hatStyle: 'snapback',
+        accessory: 'headphones',
+      },
+      {
+        id: 'OUTFIT_FOG_ESSENTIALS',
+        name: 'Áo Hoodie Fear of God Essentials Oversize',
+        englishName: 'FOG Essentials Smoke Grey Hoodie',
+        priceCoins: 160,
+        expReward: 80,
+        icon: '🧥',
+        description: 'Streetwear tối giản tông xám khói cao cấp, phom rộng thời thượng (+80 EXP)',
+        category: 'clothing',
+        brand: 'Fear of God',
+        outfitColor: '#64748b',
+        hatColor: '#334155',
+        pantsColor: '#0f172a',
+        shoeColor: '#f8fafc',
+        avatarStyle: 'hoodie',
+        hatStyle: 'snapback',
+        accessory: 'crossbody_bag',
+      },
+      {
+        id: 'OUTFIT_BIKER_LEATHER',
+        name: 'Áo Da Biker Rocker Punk & Kính Râm',
+        englishName: 'Vintage Black Leather Biker Jacket',
+        priceCoins: 240,
+        expReward: 120,
+        icon: '🕶️',
+        description: 'Áo da thuộc đen bóng nạm đinh tán phong trần, kính râm gọng kim loại (+120 EXP)',
+        category: 'clothing',
+        brand: 'Saint Laurent',
+        outfitColor: '#1e293b',
+        hatColor: '#0f172a',
+        pantsColor: '#0f172a',
+        shoeColor: '#0f172a',
+        avatarStyle: 'streetwear',
+        hatStyle: 'none',
+        accessory: 'sunglasses',
+      },
+      {
+        id: 'OUTFIT_NIKE_TECH',
+        name: 'Set Thể Thao Nike Tech Fleece Tracksuit',
+        englishName: 'Nike Tech Fleece Athletic Tracksuit',
+        priceCoins: 210,
+        expReward: 110,
+        icon: '⚡',
+        description: 'Bộ nỉ thể thao ôm dáng co giãn, viền phản quang năng động dạo phố (+110 EXP)',
+        category: 'clothing',
+        brand: 'Nike Sportswear',
+        outfitColor: '#0284c7',
+        hatColor: '#0369a1',
+        pantsColor: '#0f172a',
+        shoeColor: '#38bdf8',
+        avatarStyle: 'streetwear',
+        hatStyle: 'snapback',
+        accessory: 'headphones',
+      },
+      {
+        id: 'OUTFIT_VINTAGE_DENIM',
+        name: 'Áo Khoác Bò Vintage Denim Levi’s 1990s',
+        englishName: 'Levi’s 1990s Washed Denim Jacket',
+        priceCoins: 185,
+        expReward: 95,
+        icon: '👖',
+        description: 'Chất liệu Jean bạc màu bụi bặm retro thập niên 90 kèm mũ len (+95 EXP)',
+        category: 'clothing',
+        brand: 'Levi’s Vintage',
+        outfitColor: '#2563eb',
+        hatColor: '#ea580c',
+        pantsColor: '#1e293b',
+        shoeColor: '#f59e0b',
+        avatarStyle: 'streetwear',
+        hatStyle: 'snapback',
+        accessory: 'crossbody_bag',
+      },
+      {
+        id: 'OUTFIT_Y2K_BABYTEE',
+        name: 'Set Baby Tee Y2K & Chân Váy Tennis Hồng',
+        englishName: 'Y2K Pastel Pink Baby Tee & Tennis Skirt',
+        priceCoins: 195,
+        expReward: 100,
+        icon: '🌸',
+        description: 'Phong cách Gen Z kẹo ngọt Y2K tông pastel với kính mắt mèo sành điệu (+100 EXP)',
+        category: 'clothing',
+        brand: 'Miu Miu Style',
+        outfitColor: '#f472b6',
+        hatColor: '#fbcfe8',
+        pantsColor: '#ffffff',
+        shoeColor: '#f472b6',
+        avatarStyle: 'hoodie',
+        hatStyle: 'cat_ears',
+        accessory: 'crossbody_bag',
+      },
+      {
+        id: 'OUTFIT_HARAJUKU_CAT',
+        name: 'Áo Gió Tai Mèo Hồng Phát Sáng Harajuku',
+        englishName: 'Harajuku Cat-Ears Neon Windbreaker',
+        priceCoins: 230,
+        expReward: 115,
+        icon: '🐱',
+        description: 'Áo khoác gió Tokyo đường phố kèm Mũ Tai Mèo LED phát sáng và túi đeo chéo (+115 EXP)',
+        category: 'clothing',
+        brand: 'Harajuku Lab',
+        outfitColor: '#ec4899',
+        hatColor: '#f472b6',
+        pantsColor: '#f8fafc',
+        shoeColor: '#ec4899',
+        avatarStyle: 'hoodie',
+        hatStyle: 'cat_ears',
+        accessory: 'crossbody_bag',
+      },
+      {
+        id: 'OUTFIT_OXFORD_GUITAR',
+        name: 'Đồng Phục Nghệ Thuật Oxford & Guitar Gỗ',
+        englishName: 'Oxford Arts Academy Blazer & Acoustic Guitar',
+        priceCoins: 270,
+        expReward: 140,
+        icon: '🎸',
+        description: 'Áo Blazer đỏ đô quý tộc kèm Đàn Guitar Acoustic gỗ đeo sau lưng cực lãng tử (+140 EXP)',
+        category: 'clothing',
+        brand: 'Oxford Heritage',
+        outfitColor: '#991b1b',
+        hatColor: '#facc15',
+        pantsColor: '#1e293b',
+        shoeColor: '#78350f',
+        avatarStyle: 'suit',
+        hatStyle: 'beret',
+        accessory: 'guitar_back',
+      },
+      {
+        id: 'OUTFIT_PARISIAN_TRENCH',
+        name: 'Măng-tô Dạ Cashmere Paris & Mũ Nồi Beret',
+        englishName: 'Parisian Cashmere Trench Coat & French Beret',
+        priceCoins: 290,
+        expReward: 145,
+        icon: '🎨',
+        description: 'Phong thái họa sĩ & thi sĩ sông Seine với áo dạ măng-tô xanh ngọc và mũ nồi Pháp (+145 EXP)',
+        category: 'clothing',
+        brand: 'Céline Paris',
+        outfitColor: '#10b981',
+        hatColor: '#047857',
+        pantsColor: '#f5ebd6',
+        shoeColor: '#78350f',
+        avatarStyle: 'streetwear',
+        hatStyle: 'beret',
+        accessory: 'crossbody_bag',
+      },
+      {
+        id: 'OUTFIT_BLAZER_ITALIAN',
+        name: 'Blazer Lụa Kẻ Sọc Milano Old Money',
+        englishName: 'Milano Silk Pinstripe Blazer Old Money',
+        priceCoins: 340,
+        expReward: 175,
+        icon: '🍷',
+        description: 'Gu thời trang giới thượng lưu Ý với chất liệu lụa dệt sọc chìm, kính râm quý phái (+175 EXP)',
+        category: 'clothing',
+        brand: 'Loro Piana Italy',
+        outfitColor: '#334155',
+        hatColor: '#475569',
+        pantsColor: '#e2e8f0',
+        shoeColor: '#1e293b',
+        avatarStyle: 'suit',
+        hatStyle: 'none',
+        accessory: 'sunglasses',
       },
       {
         id: 'OUTFIT_ROYAL_SUIT',
-        name: 'Bộ Vest Hoàng Gia London',
-        englishName: 'London Royal Gentleman Suit',
-        priceCoins: 120,
-        expReward: 60,
+        name: 'Bộ Vest Hoàng Gia Anh Savile Row May Đo',
+        englishName: 'London Savile Row Bespoke Tuxedo',
+        priceCoins: 390,
+        expReward: 200,
         icon: '🤵',
-        description: 'Vest đen lịch lãm kèm mũ đỏ Bordeaux sang trọng (+60 EXP)',
+        description: 'Vest dạ tiệc đen tuyền viền satin, nơ lụa quý tộc, kính đen và giày Oxford bóng bẩy (+200 EXP)',
         category: 'clothing',
-        outfitColor: '#1e293b',
-        hatColor: '#be123c',
+        brand: 'Savile Row London',
+        outfitColor: '#0f172a',
+        hatColor: '#1e293b',
+        pantsColor: '#0f172a',
+        shoeColor: '#020617',
+        avatarStyle: 'suit',
+        hatStyle: 'beret',
+        accessory: 'sunglasses',
       },
       {
-        id: 'OUTFIT_NEON_STREET',
-        name: 'Áo Khoác Streetwear Hồng Neon',
-        englishName: 'Harajuku Pink Streetwear Jacket',
-        priceCoins: 150,
-        expReward: 75,
-        icon: '🧥',
-        description: 'Phong cách đường phố cá tính nổi bật giữa quảng trường (+75 EXP)',
+        id: 'OUTFIT_HAUTE_COUTURE',
+        name: 'Váy Dạ Hội Haute Couture Đính Đá & Vương Miện',
+        englishName: 'Royal Haute Couture Evening Gown & Tiara',
+        priceCoins: 460,
+        expReward: 240,
+        icon: '👑',
+        description: 'Trang phục dạ hội đính đá pha lê lấp lánh, kèm Vương Miện Hoàng Gia tráng lệ (+240 EXP)',
         category: 'clothing',
-        outfitColor: '#ec4899',
-        hatColor: '#38bdf8',
+        brand: 'Dior Couture',
+        outfitColor: '#e11d48',
+        hatColor: '#fbbf24',
+        pantsColor: '#fda4af',
+        shoeColor: '#e11d48',
+        avatarStyle: 'royal',
+        hatStyle: 'crown',
+        accessory: 'sunglasses',
       },
       {
-        id: 'OUTFIT_OXFORD_UNIFORM',
-        name: 'Đồng Phục Học Viện Oxford',
-        englishName: 'Oxford Academy Blazer',
-        priceCoins: 180,
-        expReward: 95,
-        icon: '🎓',
-        description: 'Áo Blazer đỏ đô học thuật chuẩn sinh viên quốc tế (+95 EXP)',
+        id: 'OUTFIT_CYBERPUNK_NEON',
+        name: 'Giáp Cơ Động Cyberpunk 2077 & Cánh Cơ Giới',
+        englishName: 'Cyberpunk 2077 Neon Exosuit & Mech Wings',
+        priceCoins: 520,
+        expReward: 270,
+        icon: '🦾',
+        description: 'Bộ giáp công nghệ tương lai viền LED tím-xanh Neon kèm Đôi Cánh Cơ Giới xé gió (+270 EXP)',
         category: 'clothing',
-        outfitColor: '#991b1b',
-        hatColor: '#facc15',
+        brand: 'Arasaka Corp',
+        outfitColor: '#6366f1',
+        hatColor: '#06b6d4',
+        pantsColor: '#0f172a',
+        shoeColor: '#06b6d4',
+        avatarStyle: 'cyberpunk',
+        hatStyle: 'snapback',
+        accessory: 'cyber_wings',
+      },
+      {
+        id: 'OUTFIT_CELESTIAL_ANGEL',
+        name: 'Lễ Phục Thiên Thần Tuyết & Đôi Cánh Lông Vũ',
+        englishName: 'Celestial Seraphim White Gown & Angel Wings',
+        priceCoins: 580,
+        expReward: 300,
+        icon: '🪽',
+        description: 'Áo choàng trắng tinh khôi thần thánh, Vòng Hào Quang vàng và Đôi Cánh Thiên Thần bay bổng (+300 EXP)',
+        category: 'clothing',
+        brand: 'Celestial Olympus',
+        outfitColor: '#f8fafc',
+        hatColor: '#fde047',
+        pantsColor: '#f1f5f9',
+        shoeColor: '#fbbf24',
+        avatarStyle: 'royal',
+        hatStyle: 'halo',
+        accessory: 'angel_wings',
+      },
+      {
+        id: 'OUTFIT_DRACULA_ROYAL',
+        name: 'Áo Choàng Bá Tước Dracula Nhung Đỏ Đen',
+        englishName: 'Transylvania Dracula Royal Velvet Cloak',
+        priceCoins: 510,
+        expReward: 260,
+        icon: '🧛',
+        description: 'Chất nhung tuyết đỏ thẫm phối cổ dựng đen huyền bí phong cách Gothic cổ điển châu Âu (+260 EXP)',
+        category: 'clothing',
+        brand: 'Gothic Castle',
+        outfitColor: '#7f1d1d',
+        hatColor: '#450a0a',
+        pantsColor: '#0f172a',
+        shoeColor: '#450a0a',
+        avatarStyle: 'royal',
+        hatStyle: 'crown',
+        accessory: 'guitar_back',
       },
       {
         id: 'OUTFIT_GOLD_VIP',
-        name: 'Hoàng Kim Giáp Luxury',
-        englishName: 'Golden Luxury Couture',
-        priceCoins: 280,
-        expReward: 150,
+        name: 'Hoàng Bào Long Vương & Vương Miện Hoàng Kim',
+        englishName: 'Imperial Golden Dragon Robe & Royal Crown',
+        priceCoins: 680,
+        expReward: 360,
         icon: '👑',
-        description: 'Trang phục Vàng Hoàng Kim đẳng cấp bậc nhất thành phố (+150 EXP)',
+        description: 'Lễ phục dát Vàng Hoàng Kim 24K quyền lực tối thượng, kèm Vương Miện đính Hồng Ngọc (+360 EXP)',
         category: 'clothing',
+        brand: 'Imperial Palace',
         outfitColor: '#eab308',
-        hatColor: '#dc2626',
+        hatColor: '#facc15',
+        pantsColor: '#1e293b',
+        shoeColor: '#eab308',
+        avatarStyle: 'royal',
+        hatStyle: 'crown',
+        accessory: 'angel_wings',
       },
     ],
     workScenarios: [
@@ -1251,51 +1784,171 @@ export const CITY_SHOPS_DATA: Record<ShopVenueId, CityShopVenueConfig> = {
     products: [
       {
         id: 'VEHICLE_SKATEBOARD',
-        name: 'Ván Trượt Thể Thao Skateboard',
-        englishName: 'Street Pro Skateboard',
+        name: 'Ván Trượt Thể Thao Skateboard (Mặc định)',
+        englishName: 'Street Pro Skateboard (Default)',
         priceCoins: 0,
         expReward: 0,
         icon: '🛹',
-        description: 'Phương tiện lướt phố cơ bản được cấp sẵn (Tốc độ: 14.5 m/s)',
+        description: 'Phương tiện lướt phố cơ bản được cấp sẵn miễn phí (Tốc độ: 14.5 m/s)',
         category: 'vehicle',
+        brand: 'LifeAt Skate',
         vehicleType: 'skateboard',
+        vehicleColor: '#f59e0b',
         speedBoost: 14.5,
       },
       {
-        id: 'VEHICLE_VESPA',
-        name: 'Xe Tay Ga Vespa Cổ Điển Ý',
-        englishName: 'Italian Vintage Vespa Scooter',
-        priceCoins: 180,
-        expReward: 90,
-        icon: '🛵',
-        description: 'Xe máy Vespa thanh lịch dạo phố tốc độ cao (Tốc độ: 17.5 m/s • +90 EXP)',
+        id: 'VEHICLE_HOVERBOARD_NEON',
+        name: 'Ván Bay Đệm Từ MagLev Cyber Neon',
+        englishName: 'Cyber MagLev Anti-Gravity Hoverboard',
+        priceCoins: 380,
+        expReward: 190,
+        icon: '🛸',
+        description: 'Ván bay phản trọng lực phát quang đèn LED Neon xanh ngọc tương lai (Tốc độ: 16.5 m/s • +190 EXP)',
         category: 'vehicle',
+        brand: 'CyberTech Labs',
+        vehicleType: 'hoverboard',
+        vehicleColor: '#06b6d4',
+        speedBoost: 16.5,
+      },
+      {
+        id: 'VEHICLE_VESPA',
+        name: 'Xe Tay Ga Vespa Primavera 150 Sean Wotherspoon',
+        englishName: 'Italian Vintage Vespa Primavera 150',
+        priceCoins: 580,
+        expReward: 290,
+        icon: '🛵',
+        description: 'Thiết kế cổ điển Ý thanh lịch, yên da nâu thủ công dạo phố lãng mạn (Tốc độ: 17.5 m/s • +290 EXP)',
+        category: 'vehicle',
+        brand: 'Piaggio Italy',
         vehicleType: 'vespa',
+        vehicleColor: '#fde047',
         speedBoost: 17.5,
       },
       {
-        id: 'VEHICLE_MOTORBIKE',
-        name: 'Mô Tô Phân Khối Lớn Ducati Sport',
-        englishName: 'Superbike Ducati 1100R',
-        priceCoins: 320,
-        expReward: 160,
+        id: 'VEHICLE_HARLEY_FATBOY',
+        name: 'Mô Tô Cơ Bắp Harley-Davidson Fat Boy 114',
+        englishName: 'Harley-Davidson Fat Boy 114 Cruiser',
+        priceCoins: 1450,
+        expReward: 720,
         icon: '🏍️',
-        description: 'Mô tô thể thao đỏ rực cực ngầu (Tốc độ: 20.5 m/s • +160 EXP)',
+        description: 'Huyền thoại cơ bắp Mỹ với động cơ V-Twin gầm rú uy lực, ghi đông mạ chrome sáng bóng (Tốc độ: 19.5 m/s • +720 EXP)',
         category: 'vehicle',
+        brand: 'Harley-Davidson USA',
+        vehicleType: 'harley',
+        vehicleColor: '#0f172a',
+        speedBoost: 19.5,
+      },
+      {
+        id: 'VEHICLE_BMW_S1000RR',
+        name: 'Siêu Mô Tô BMW S1000RR M Sport',
+        englishName: 'BMW S1000RR M Sport Superbike',
+        priceCoins: 2200,
+        expReward: 1100,
+        icon: '🏍️',
+        description: 'Cá mập Đức yếm khí động học xé gió, phuộc nhún vàng Ohlins và bô titan Akrapovic (Tốc độ: 22.0 m/s • +1100 EXP)',
+        category: 'vehicle',
+        brand: 'BMW Motorrad Germany',
         vehicleType: 'motorbike',
-        speedBoost: 20.5,
+        vehicleColor: '#38bdf8',
+        speedBoost: 22.0,
+      },
+      {
+        id: 'VEHICLE_MOTORBIKE',
+        name: 'Siêu Mô Tô Đua Ducati Panigale V4 S Corse',
+        englishName: 'Ducati Panigale V4 S Corse Edition',
+        priceCoins: 2900,
+        expReward: 1450,
+        icon: '🏍️',
+        description: 'Siêu mô tô cỗ máy đỏ Borgo Panigale trang bị cánh gió carbon kép xé toạc làn gió (Tốc độ: 23.5 m/s • +1450 EXP)',
+        category: 'vehicle',
+        brand: 'Ducati Italy',
+        vehicleType: 'motorbike',
+        vehicleColor: '#dc2626',
+        speedBoost: 23.5,
+      },
+      {
+        id: 'VEHICLE_CYBERTRUCK',
+        name: 'Siêu Bán Tải Bọc Thép Tesla Cybertruck Tri-Motor',
+        englishName: 'Tesla Cybertruck Tri-Motor All-Wheel Drive',
+        priceCoins: 3200,
+        expReward: 1600,
+        icon: '🚙',
+        description: 'Chiến xa điện tương lai vỏ thép Cold-Rolled chống đạn, dải LED Horizon toàn dải cực ngầu (Tốc độ: 23.5 m/s • +1600 EXP)',
+        category: 'vehicle',
+        brand: 'Tesla USA',
+        vehicleType: 'cybertruck',
+        vehicleColor: '#94a3b8',
+        speedBoost: 23.5,
+      },
+      {
+        id: 'VEHICLE_MERCEDES_G63',
+        name: 'Siêu SUV Mercedes-AMG G63 Brabus 800 V8 BiTurbo',
+        englishName: 'Mercedes-AMG G63 Brabus 800 Widestar',
+        priceCoins: 4600,
+        expReward: 2300,
+        icon: '🚙',
+        description: 'Vua địa hình hộp vuông huyền thoại nước Đức, lưới tản nhiệt Panamericana và bô hông kép (Tốc độ: 23.0 m/s • +2300 EXP)',
+        category: 'vehicle',
+        brand: 'Mercedes-AMG Germany',
+        vehicleType: 'gclass',
+        vehicleColor: '#1e293b',
+        speedBoost: 23.0,
+      },
+      {
+        id: 'VEHICLE_PORSCHE_911',
+        name: 'Siêu Xe Đua Porsche 911 GT3 RS Weissach Package',
+        englishName: 'Porsche 911 GT3 RS Weissach Package',
+        priceCoins: 5800,
+        expReward: 2900,
+        icon: '🏎️',
+        description: 'Cỗ máy đường đua Stuttgart trang bị cánh gió carbon khổng lồ DRS và hốc gió khí động học (Tốc độ: 25.5 m/s • +2900 EXP)',
+        category: 'vehicle',
+        brand: 'Porsche Germany',
+        vehicleType: 'sportscar',
+        vehicleColor: '#ffffff',
+        speedBoost: 25.5,
       },
       {
         id: 'VEHICLE_SPORTSCAR',
-        name: 'Siêu Xe Mui Trần Ferrari GT 3D',
-        englishName: 'Red Convertible Supercar GT',
-        priceCoins: 550,
-        expReward: 280,
+        name: 'Siêu Xe Mui Trần Ferrari SF90 Stradale Hybrid',
+        englishName: 'Ferrari SF90 Spider Assetto Fiorano V8 Turbo',
+        priceCoins: 7200,
+        expReward: 3600,
         icon: '🏎️',
-        description: 'Siêu xe mui trần đẳng cấp nhất thành phố (Tốc độ: 24.5 m/s • +280 EXP)',
+        description: 'Siêu xe mui trần biểu tượng ngựa chồm đỏ Rosso Corsa, 1.000 mã lực tăng tốc như tên bắn (Tốc độ: 26.5 m/s • +3600 EXP)',
         category: 'vehicle',
+        brand: 'Ferrari Maranello Italy',
         vehicleType: 'sportscar',
-        speedBoost: 24.5,
+        vehicleColor: '#ef4444',
+        speedBoost: 26.5,
+      },
+      {
+        id: 'VEHICLE_LAMBO_GOLD',
+        name: 'Siêu Xe Thần Gió Lamborghini Revuelto V12 HPEV',
+        englishName: 'Lamborghini Revuelto V12 Stealth Supercar',
+        priceCoins: 8500,
+        expReward: 4250,
+        icon: '🏎️',
+        description: 'Kiệt tác siêu xe bò tót cửa cắt kéo Scissor Doors, thiết kế tàng hình tàng hình Stealth Fighter V12 (Tốc độ: 27.5 m/s • +4250 EXP)',
+        category: 'vehicle',
+        brand: 'Lamborghini Italy',
+        vehicleType: 'sportscar',
+        vehicleColor: '#eab308',
+        speedBoost: 27.5,
+      },
+      {
+        id: 'VEHICLE_ROLLS_ROYCE',
+        name: 'Xe Siêu Sang Rolls-Royce Phantom VIII Extended Limousine',
+        englishName: 'Rolls-Royce Phantom VIII Extended Bespoke',
+        priceCoins: 9900,
+        expReward: 5000,
+        icon: '👑',
+        description: 'Đỉnh cao xa xỉ thế giới: Lưới tản nhiệt đền Pantheon mạ chrome, Nữ thần Spirit of Ecstasy lấp lánh (Tốc độ: 24.0 m/s • +5000 EXP)',
+        category: 'vehicle',
+        brand: 'Rolls-Royce Goodwood England',
+        vehicleType: 'rollsroyce',
+        vehicleColor: '#020617',
+        speedBoost: 24.0,
       },
     ],
     workScenarios: [
@@ -1463,11 +2116,53 @@ export const CITY_SHOPS_DATA: Record<ShopVenueId, CityShopVenueConfig> = {
   },
 };
 
+// Tự động bổ sung kho câu hỏi Đa Nguồn (Cambridge, Oxford 3000, IELTS, TOEIC, British Council, Destination B1/B2)
+// vào danh sách khách hàng NPC của cả 4 Quán để làm việc không bao giờ bị trùng lặp câu hỏi
+const SHOP_CUSTOMER_PROFILES = [
+  { name: 'Mr. Oliver (Khách Quốc Tế)', avatar: '🧑🏼‍💼' },
+  { name: 'Ms. Charlotte (Du Khách Anh)', avatar: '👩🏼‍🎓' },
+  { name: 'Dr. William (Giáo Sư Oxford)', avatar: '👨🏻‍🏫' },
+  { name: 'Lady Amelia (Khách VIP)', avatar: '💃🏼' },
+  { name: 'CEO Benjamin (Doanh Nhân)', avatar: '🤵🏻‍♂️' },
+  { name: 'Tourist Chloe (Blogger Du Lịch)', avatar: '📸' },
+];
+
+(Object.keys(CITY_SHOPS_DATA) as ShopVenueId[]).forEach((venueId) => {
+  const extraWorkScenarios: WorkCustomerScenario[] = MULTI_SOURCE_ENGLISH_BANK.map(
+    (item, idx) => {
+      const cust = SHOP_CUSTOMER_PROFILES[idx % SHOP_CUSTOMER_PROFILES.length];
+      const sourceMeta = ENGLISH_DATABASE_SOURCES[item.sourceId];
+      return {
+        id: `${venueId.toLowerCase()}_ms_${item.id}`,
+        difficulty: item.difficulty,
+        questionType: item.questionType,
+        unitSource: `${sourceMeta.shortBadge} • ${item.unitOrTopic}`,
+        customerName: cust.name,
+        customerAvatar: cust.avatar,
+        customerOrderEn: item.promptEn,
+        contextHintVi: item.hintVi,
+        options: item.options,
+        correctAnswer: item.correctAnswer,
+        acceptedAnswers: item.acceptedAnswers,
+        explanationVi: item.explanationVi,
+        rewardCoins:
+          item.difficulty === 'hard' ? 115 : item.difficulty === 'medium' ? 70 : 40,
+        rewardExp:
+          item.difficulty === 'hard' ? 85 : item.difficulty === 'medium' ? 50 : 30,
+      };
+    }
+  );
+  CITY_SHOPS_DATA[venueId].workScenarios.push(...extraWorkScenarios);
+});
+
 // ============================================================================
 // 4. DỮ LIỆU GIAO TIẾP TIẾNG ANH CÙNG CƯ DÂN & NPC TRÊN ĐƯỜNG PHỐ (PHÍM [E])
+// Kết hợp trực tiếp với Cơ Sở Dữ Liệu Tiếng Anh Đa Nguồn (6 nguồn quốc tế + MongoDB API)
 // ============================================================================
 export interface StreetNpcScenario {
   id: string;
+  sourceId?: EnglishDatabaseSourceId;
+  cefr?: string;
   questionType: 'multiple_choice' | 'essay_fill';
   unitSource: string;
   npcSpeechEn: string;
@@ -1487,7 +2182,45 @@ export interface StreetNpcProfile {
   avatarEmoji: string;
   accentColor: string;
   locationLabel: string;
+  preferredCategories?: MultiSourceEnglishItem['category'][];
   scenarios: StreetNpcScenario[];
+}
+
+export function convertMultiSourceItemToNpcScenario(
+  item: MultiSourceEnglishItem
+): StreetNpcScenario {
+  const sourceMeta = ENGLISH_DATABASE_SOURCES[item.sourceId];
+  return {
+    id: item.id,
+    sourceId: item.sourceId,
+    cefr: item.cefr,
+    questionType: item.questionType,
+    unitSource: `${sourceMeta ? sourceMeta.shortBadge : '📘 English DB'} • ${item.unitOrTopic}`,
+    npcSpeechEn: item.promptEn,
+    contextHintVi: item.hintVi,
+    options: item.options,
+    correctAnswer: item.correctAnswer,
+    acceptedAnswers: item.acceptedAnswers,
+    explanationVi: item.explanationVi,
+    rewardCoins: item.rewardCoins,
+    rewardExp: item.rewardExp,
+  };
+}
+
+function buildNpcScenariosWithMultiSource(
+  personalScenarios: StreetNpcScenario[],
+  preferredCategories: MultiSourceEnglishItem['category'][]
+): StreetNpcScenario[] {
+  // Ưu tiên các câu trong kho đa nguồn khớp chủ đề NPC trước, sau đó mở rộng sang toàn bộ kho đa nguồn
+  const matchingItems = MULTI_SOURCE_ENGLISH_BANK.filter((item) =>
+    preferredCategories.includes(item.category)
+  ).map(convertMultiSourceItemToNpcScenario);
+
+  const otherItems = MULTI_SOURCE_ENGLISH_BANK.filter(
+    (item) => !preferredCategories.includes(item.category)
+  ).map(convertMultiSourceItemToNpcScenario);
+
+  return [...personalScenarios, ...matchingItems, ...otherItems];
 }
 
 export const STREET_NPCS_DIALOGUE_DATA: Record<string, StreetNpcProfile> = {
@@ -1498,37 +2231,45 @@ export const STREET_NPCS_DIALOGUE_DATA: Record<string, StreetNpcProfile> = {
     avatarEmoji: '👩🏻‍🎓',
     accentColor: '#f472b6',
     locationLabel: 'Đại lộ Trung tâm — Khu Học Viện',
-    scenarios: [
-      {
-        id: 'sophia_1',
-        questionType: 'multiple_choice',
-        unitSource: 'Destination B1 • Unit 6: Learning and doing (Vocabulary)',
-        npcSpeechEn:
-          '"Hi there! I am on my way to the English Academy. Tomorrow we have an important test, so I really need to _____ for my exam tonight!"',
-        contextHintVi:
-          'Chọn động từ chuẩn trong Unit 6 có nghĩa là "ôn tập bài vở chuẩn bị cho kỳ thi" (đi với giới từ "for").',
-        options: ['revise', 'remind', 'memorise', 'learn'],
-        correctAnswer: 'revise',
-        explanationVi:
-          '[Destination B1 - Unit 6] Động từ "revise (for an exam/test)" có nghĩa là ôn tập lại kiến thức trước kỳ thi.',
-        rewardCoins: 35,
-        rewardExp: 40,
-      },
-      {
-        id: 'sophia_2',
-        questionType: 'essay_fill',
-        unitSource: 'Destination B1 • Unit 6: Learning and doing (Phrasal verbs)',
-        npcSpeechEn:
-          '"If you do not know the meaning of a new English word in Destination B1, you can _____ it up in a dictionary!" (4 chữ cái: l _ _ k)',
-        contextHintVi: 'Cụm động từ "___ up a word in a dictionary" = tra từ điển (l o o k).',
-        correctAnswer: 'look',
-        acceptedAnswers: ['look'],
-        explanationVi:
-          '[Destination B1 - Unit 6] Phrasal verb "look up (something)" có nghĩa là tra cứu thông tin hoặc từ vựng trong từ điển.',
-        rewardCoins: 45,
-        rewardExp: 50,
-      },
-    ],
+    preferredCategories: ['study_academy', 'daily_social', 'culture_knowledge'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'sophia_1',
+          sourceId: 'DESTINATION_B1_B2',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📘 Destination B1 • Unit 6: Learning and doing (Vocabulary)',
+          npcSpeechEn:
+            '"Hi there! I am on my way to the English Academy. Tomorrow we have an important test, so I really need to _____ for my exam tonight!"',
+          contextHintVi:
+            'Chọn động từ chuẩn trong Unit 6 có nghĩa là "ôn tập bài vở chuẩn bị cho kỳ thi" (đi với giới từ "for").',
+          options: ['revise', 'remind', 'memorise', 'learn'],
+          correctAnswer: 'revise',
+          explanationVi:
+            '[Destination B1 - Unit 6] Động từ "revise (for an exam/test)" có nghĩa là ôn tập lại kiến thức trước kỳ thi.',
+          rewardCoins: 35,
+          rewardExp: 40,
+        },
+        {
+          id: 'sophia_2',
+          sourceId: 'DESTINATION_B1_B2',
+          cefr: 'B1',
+          questionType: 'essay_fill',
+          unitSource: '📘 Destination B1 • Unit 6: Learning and doing (Phrasal verbs)',
+          npcSpeechEn:
+            '"If you do not know the meaning of a new English word in Destination B1, you can _____ it up in a dictionary!" (4 chữ cái: l _ _ k)',
+          contextHintVi: 'Cụm động từ "___ up a word in a dictionary" = tra từ điển (l o o k).',
+          correctAnswer: 'look',
+          acceptedAnswers: ['look'],
+          explanationVi:
+            '[Destination B1 - Unit 6] Phrasal verb "look up (something)" có nghĩa là tra cứu thông tin hoặc từ vựng trong từ điển.',
+          rewardCoins: 45,
+          rewardExp: 50,
+        },
+      ],
+      ['study_academy', 'daily_social', 'culture_knowledge']
+    ),
   },
   CITIZEN_LIAM: {
     id: 'CITIZEN_LIAM',
@@ -1537,43 +2278,51 @@ export const STREET_NPCS_DIALOGUE_DATA: Record<string, StreetNpcProfile> = {
     avatarEmoji: '🧳',
     accentColor: '#38bdf8',
     locationLabel: 'Quảng Trường & Phố Ẩm Thực',
-    scenarios: [
-      {
-        id: 'liam_1',
-        questionType: 'multiple_choice',
-        unitSource: 'Destination B1 • Unit 9: Coming and going (Prepositions)',
-        npcSpeechEn:
-          '"Excuse me! I have just arrived _____ this beautiful city from London. Could you tell me how to get to the London Focus Cafe?"',
-        contextHintVi:
-          'Động từ "arrive" đi với giới từ nào khi đến một thành phố, quốc gia hoặc khu vực rộng lớn?',
-        options: ['in', 'at', 'to', 'on'],
-        correctAnswer: 'in',
-        explanationVi:
-          '[Destination B1 - Unit 9] Ta dùng "arrive in" + thành phố/đất nước lớn (arrive in London / arrive in this city), và "arrive at" + địa điểm cụ thể (arrive at the station/hotel).',
-        rewardCoins: 35,
-        rewardExp: 40,
-      },
-      {
-        id: 'liam_2',
-        questionType: 'multiple_choice',
-        unitSource: 'Destination B1 • Unit 33: Indirect questions (Polite directions)',
-        npcSpeechEn:
-          '"I love walking around the square! By the way, could you tell me where _____?"',
-        contextHintVi:
-          'Trong câu hỏi gián tiếp lịch sự "Could you tell me where...", trật tự từ theo sau là S + V (không đảo ngữ).',
-        options: [
-          'the nearest bus stop is',
-          'is the nearest bus stop',
-          'does the nearest bus stop',
-          'be the nearest bus stop',
-        ],
-        correctAnswer: 'the nearest bus stop is',
-        explanationVi:
-          '[Destination B1 - Unit 33] Trong câu hỏi gián tiếp (Indirect question): "Could you tell me + từ để hỏi + Chủ ngữ + Động từ" ("where the nearest bus stop is").',
-        rewardCoins: 45,
-        rewardExp: 50,
-      },
-    ],
+    preferredCategories: ['travel_tourism', 'culture_knowledge', 'daily_social'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'liam_1',
+          sourceId: 'DESTINATION_B1_B2',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📘 Destination B1 • Unit 9: Coming and going (Prepositions)',
+          npcSpeechEn:
+            '"Excuse me! I have just arrived _____ this beautiful city from London. Could you tell me how to get to the London Focus Cafe?"',
+          contextHintVi:
+            'Động từ "arrive" đi với giới từ nào khi đến một thành phố, quốc gia hoặc khu vực rộng lớn?',
+          options: ['in', 'at', 'to', 'on'],
+          correctAnswer: 'in',
+          explanationVi:
+            '[Destination B1 - Unit 9] Ta dùng "arrive in" + thành phố/đất nước lớn (arrive in London / arrive in this city), và "arrive at" + địa điểm cụ thể (arrive at the station/hotel).',
+          rewardCoins: 35,
+          rewardExp: 40,
+        },
+        {
+          id: 'liam_2',
+          sourceId: 'CAMBRIDGE_GRAMMAR',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📗 Cambridge Grammar • Unit 50: Indirect questions (Polite directions)',
+          npcSpeechEn:
+            '"I love walking around the square! By the way, could you tell me where _____?"',
+          contextHintVi:
+            'Trong câu hỏi gián tiếp lịch sự "Could you tell me where...", trật tự từ theo sau là S + V (không đảo ngữ).',
+          options: [
+            'the nearest bus stop is',
+            'is the nearest bus stop',
+            'does the nearest bus stop',
+            'be the nearest bus stop',
+          ],
+          correctAnswer: 'the nearest bus stop is',
+          explanationVi:
+            '[Cambridge Grammar in Use - Unit 50] Trong câu hỏi gián tiếp (Indirect question): "Could you tell me + từ để hỏi + Chủ ngữ + Động từ" ("where the nearest bus stop is").',
+          rewardCoins: 45,
+          rewardExp: 50,
+        },
+      ],
+      ['travel_tourism', 'culture_knowledge', 'daily_social']
+    ),
   },
   CITIZEN_OLIVIA: {
     id: 'CITIZEN_OLIVIA',
@@ -1582,37 +2331,45 @@ export const STREET_NPCS_DIALOGUE_DATA: Record<string, StreetNpcProfile> = {
     avatarEmoji: '👩🏼‍🏫',
     accentColor: '#34d399',
     locationLabel: 'Vòng xoay Quảng Trường Trung Tâm',
-    scenarios: [
-      {
-        id: 'olivia_1',
-        questionType: 'multiple_choice',
-        unitSource: 'Destination B1 • Unit 12: Friends and relations (Phrasal verbs)',
-        npcSpeechEn:
-          '"Hello! Practising English with neighbours every day is wonderful. Do you _____ on well with the other players in this neighbourhood?"',
-        contextHintVi:
-          'Cụm động từ "___ on (well) with somebody" trong Unit 12 có nghĩa là hòa đồng, có mối quan hệ tốt với ai.',
-        options: ['get', 'take', 'keep', 'go'],
-        correctAnswer: 'get',
-        explanationVi:
-          '[Destination B1 - Unit 12] Phrasal verb "get on (well) with somebody" có nghĩa là hòa thuận, hợp tính với ai đó.',
-        rewardCoins: 40,
-        rewardExp: 45,
-      },
-      {
-        id: 'olivia_2',
-        questionType: 'essay_fill',
-        unitSource: 'Destination B1 • Unit 6: Word patterns (capable / fond / keen)',
-        npcSpeechEn:
-          '"You are making great progress in English! I am sure you are _____ of passing the B1 exam with flying colours!" (7 chữ cái, đi với giới từ "of": c _ _ _ _ _ e)',
-        contextHintVi: 'Cấu trúc "be _____ of + V-ing" = có năng lực, có khả năng làm gì (c a p a b l e).',
-        correctAnswer: 'capable',
-        acceptedAnswers: ['capable'],
-        explanationVi:
-          '[Destination B1 - Unit 6] Word pattern: "be capable of (doing) something" = có khả năng, năng lực làm việc gì đó.',
-        rewardCoins: 55,
-        rewardExp: 60,
-      },
-    ],
+    preferredCategories: ['study_academy', 'cafe_diner', 'shopping_fashion'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'olivia_1',
+          sourceId: 'DESTINATION_B1_B2',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📘 Destination B1 • Unit 12: Friends and relations (Phrasal verbs)',
+          npcSpeechEn:
+            '"Hello! Practising English with neighbours every day is wonderful. Do you _____ on well with the other players in this neighbourhood?"',
+          contextHintVi:
+            'Cụm động từ "___ on (well) with somebody" trong Unit 12 có nghĩa là hòa đồng, có mối quan hệ tốt với ai.',
+          options: ['get', 'take', 'keep', 'go'],
+          correctAnswer: 'get',
+          explanationVi:
+            '[Destination B1 - Unit 12] Phrasal verb "get on (well) with somebody" có nghĩa là hòa thuận, hợp tính với ai đó.',
+          rewardCoins: 40,
+          rewardExp: 45,
+        },
+        {
+          id: 'olivia_2',
+          sourceId: 'DESTINATION_B1_B2',
+          cefr: 'B1',
+          questionType: 'essay_fill',
+          unitSource: '📘 Destination B1 • Unit 6: Word patterns (capable / fond / keen)',
+          npcSpeechEn:
+            '"You are making great progress in English! I am sure you are _____ of passing the B1 exam with flying colours!" (7 chữ cái, đi với giới từ "of": c _ _ _ _ _ e)',
+          contextHintVi: 'Cấu trúc "be _____ of + V-ing" = có năng lực, có khả năng làm gì (c a p a b l e).',
+          correctAnswer: 'capable',
+          acceptedAnswers: ['capable'],
+          explanationVi:
+            '[Destination B1 - Unit 6] Word pattern: "be capable of (doing) something" = có khả năng, năng lực làm việc gì đó.',
+          rewardCoins: 55,
+          rewardExp: 60,
+        },
+      ],
+      ['study_academy', 'cafe_diner', 'shopping_fashion']
+    ),
   },
   CITIZEN_NOAH: {
     id: 'CITIZEN_NOAH',
@@ -1621,112 +2378,138 @@ export const STREET_NPCS_DIALOGUE_DATA: Record<string, StreetNpcProfile> = {
     avatarEmoji: '🎸',
     accentColor: '#a855f7',
     locationLabel: 'Phố Thương Mại & Rạp Phim',
-    scenarios: [
-      {
-        id: 'noah_1',
-        questionType: 'multiple_choice',
-        unitSource: 'Destination B1 • Unit 24: Entertainment (Vocabulary & Phrasal verbs)',
-        npcSpeechEn:
-          '"Hey friend! I am playing acoustic guitar in the street tonight. Many people stop to listen because live music really _____ them up after a long day!"',
-        contextHintVi:
-          'Cụm động từ "_____ somebody up" có nghĩa là làm ai đó vui vẻ, phấn chấn lên.',
-        options: ['cheers', 'brings', 'makes', 'turns'],
-        correctAnswer: 'cheers',
-        explanationVi:
-          '[Destination B1 - Unit 24 & 39] Phrasal verb "cheer (somebody) up" có nghĩa là làm cho ai đó trở nên vui vẻ, yêu đời hơn.',
-        rewardCoins: 40,
-        rewardExp: 45,
-      },
-      {
-        id: 'noah_2',
-        questionType: 'essay_fill',
-        unitSource: 'Destination B1 • Unit 3: Fun and games (Word patterns)',
-        npcSpeechEn:
-          '"Are you _____ on listening to British pop and rock music while strolling around the city?" (4 chữ cái, đi với giới từ "on": k _ _ n)',
-        contextHintVi: 'Cụm tính từ "be _____ on + V-ing / Noun" = yêu thích, say mê thứ gì (k e e n).',
-        correctAnswer: 'keen',
-        acceptedAnswers: ['keen'],
-        explanationVi:
-          '[Destination B1 - Unit 3] Word pattern: "be keen on (doing) something" = rất thích, hào hứng với điều gì.',
-        rewardCoins: 45,
-        rewardExp: 50,
-      },
-    ],
+    preferredCategories: ['entertainment_cinema', 'study_academy', 'culture_knowledge'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'noah_1',
+          sourceId: 'DESTINATION_B1_B2',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📘 Destination B1 • Unit 24: Entertainment (Vocabulary & Phrasal verbs)',
+          npcSpeechEn:
+            '"Hey friend! I am playing acoustic guitar in the street tonight. Many people stop to listen because live music really _____ them up after a long day!"',
+          contextHintVi:
+            'Cụm động từ "_____ somebody up" có nghĩa là làm ai đó vui vẻ, phấn chấn lên.',
+          options: ['cheers', 'brings', 'makes', 'turns'],
+          correctAnswer: 'cheers',
+          explanationVi:
+            '[Destination B1 - Unit 24 & 39] Phrasal verb "cheer (somebody) up" có nghĩa là làm cho ai đó trở nên vui vẻ, yêu đời hơn.',
+          rewardCoins: 40,
+          rewardExp: 45,
+        },
+        {
+          id: 'noah_2',
+          sourceId: 'DESTINATION_B1_B2',
+          cefr: 'B1',
+          questionType: 'essay_fill',
+          unitSource: '📘 Destination B1 • Unit 3: Fun and games (Word patterns)',
+          npcSpeechEn:
+            '"Are you _____ on listening to British pop and rock music while strolling around the city?" (4 chữ cái, đi với giới từ "on": k _ _ n)',
+          contextHintVi: 'Cụm tính từ "be _____ on + V-ing / Noun" = yêu thích, say mê thứ gì (k e e n).',
+          correctAnswer: 'keen',
+          acceptedAnswers: ['keen'],
+          explanationVi:
+            '[Destination B1 - Unit 3] Word pattern: "be keen on (doing) something" = rất thích, hào hứng với điều gì.',
+          rewardCoins: 45,
+          rewardExp: 50,
+        },
+      ],
+      ['entertainment_cinema', 'study_academy', 'culture_knowledge']
+    ),
   },
   CITIZEN_CHLOE: {
     id: 'CITIZEN_CHLOE',
     name: 'Chloe',
-    role: 'Book Lover • Mọt Sách Thư Viện',
-    avatarEmoji: '📚',
+    role: 'Movie & Book Lover • Thư Viện & Rạp Phim',
+    avatarEmoji: '🎬',
     accentColor: '#fb7185',
-    locationLabel: 'Khu Thư Viện & Công Viên Hoa Anh Đào',
-    scenarios: [
-      {
-        id: 'chloe_1',
-        questionType: 'multiple_choice',
-        unitSource: 'Destination B1 • Unit 4: Present Perfect Continuous',
-        npcSpeechEn:
-          '"Good day! I _____ this Sherlock Holmes novel in the park for two hours, and the mystery is getting so exciting!"',
-        contextHintVi:
-          'Hành động bắt đầu trong quá khứ và kéo dài liên tục suốt 2 tiếng đến hiện tại ("for two hours").',
-        options: ['have been reading', 'am reading', 'read', 'was reading'],
-        correctAnswer: 'have been reading',
-        explanationVi:
-          '[Destination B1 - Unit 4] Thì Hiện tại hoàn thành tiếp diễn (have/has been + V-ing) nhấn mạnh hành động kéo dài liên tục từ quá khứ đến hiện tại (đi kèm "for two hours").',
-        rewardCoins: 40,
-        rewardExp: 45,
-      },
-    ],
+    locationLabel: 'Khu Rạp Phim IMAX & Thư Viện',
+    preferredCategories: ['entertainment_cinema', 'shopping_fashion', 'culture_knowledge'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'chloe_1',
+          sourceId: 'CAMBRIDGE_GRAMMAR',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📗 Cambridge Grammar • Unit 9: Present Perfect Continuous',
+          npcSpeechEn:
+            '"Good day! I _____ this Sherlock Holmes novel in the park for two hours, and the mystery is getting so exciting!"',
+          contextHintVi:
+            'Hành động bắt đầu trong quá khứ và kéo dài liên tục suốt 2 tiếng đến hiện tại ("for two hours").',
+          options: ['have been reading', 'am reading', 'read', 'was reading'],
+          correctAnswer: 'have been reading',
+          explanationVi:
+            '[Cambridge Grammar in Use - Unit 9] Thì Hiện tại hoàn thành tiếp diễn (have/has been + V-ing) nhấn mạnh hành động kéo dài liên tục từ quá khứ đến hiện tại (đi kèm "for two hours").',
+          rewardCoins: 40,
+          rewardExp: 45,
+        },
+      ],
+      ['entertainment_cinema', 'shopping_fashion', 'culture_knowledge']
+    ),
   },
   CITIZEN_LUCAS: {
     id: 'CITIZEN_LUCAS',
     name: 'Lucas',
-    role: 'Skateboarder • Vận Động Viên Ván Trượt',
+    role: 'Skateboarder & Camper • Vận Động Viên',
     avatarEmoji: '🛹',
     accentColor: '#fbbf24',
-    locationLabel: 'Đại Lộ Vòng Ngoài Thành Phố',
-    scenarios: [
-      {
-        id: 'lucas_1',
-        questionType: 'multiple_choice',
-        unitSource: 'Destination B1 • Unit 3: Fun and games (Sports vocabulary)',
-        npcSpeechEn:
-          '"Yo! Hold Shift to ride your skateboard fast! Do you want to _____ part in our weekend skateboarding competition around the city?"',
-        contextHintVi:
-          'Cụm từ cố định (collocation) "_____ part in" trong Unit 3 có nghĩa là tham gia vào một hoạt động/cuộc thi.',
-        options: ['take', 'make', 'do', 'have'],
-        correctAnswer: 'take',
-        explanationVi:
-          '[Destination B1 - Unit 3] Collocation: "take part in (something)" = "participate in" (tham gia vào cuộc thi hoặc sự kiện).',
-        rewardCoins: 35,
-        rewardExp: 40,
-      },
-    ],
+    locationLabel: 'Hồ Câu Cá & Khu Cắm Trại',
+    preferredCategories: ['nature_fishing', 'auto_transport', 'daily_social'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'lucas_1',
+          sourceId: 'DESTINATION_B1_B2',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📘 Destination B1 • Unit 3: Fun and games (Sports vocabulary)',
+          npcSpeechEn:
+            '"Yo! Hold Shift to ride your skateboard fast! Do you want to _____ part in our weekend skateboarding competition around the city?"',
+          contextHintVi:
+            'Cụm từ cố định (collocation) "_____ part in" trong Unit 3 có nghĩa là tham gia vào một hoạt động/cuộc thi.',
+          options: ['take', 'make', 'do', 'have'],
+          correctAnswer: 'take',
+          explanationVi:
+            '[Destination B1 - Unit 3] Collocation: "take part in (something)" = "participate in" (tham gia vào cuộc thi hoặc sự kiện).',
+          rewardCoins: 35,
+          rewardExp: 40,
+        },
+      ],
+      ['nature_fishing', 'auto_transport', 'daily_social']
+    ),
   },
   CITIZEN_DAVID: {
     id: 'CITIZEN_DAVID',
     name: 'Dr. David',
-    role: 'Oxford Lecturer • Giảng Viên Đại Học',
+    role: 'Oxford Lecturer & Banker • C1',
     avatarEmoji: '👨🏻‍🏫',
     accentColor: '#22d3ee',
-    locationLabel: 'Đại Lộ Bắc — Nam',
-    scenarios: [
-      {
-        id: 'david_1',
-        questionType: 'multiple_choice',
-        unitSource: 'Destination B1 • Unit 29: Conditionals (Second Conditional)',
-        npcSpeechEn:
-          '"Good day, young scholar! If you _____ 15 minutes of English vocabulary every day, your fluency would improve remarkably."',
-        contextHintVi:
-          'Câu điều kiện loại 2 (If + S + V2/ed, S + would + V) diễn tả lời khuyên hoặc giả định ở hiện tại.',
-        options: ['practised', 'practise', 'will practise', 'have practised'],
-        correctAnswer: 'practised',
-        explanationVi:
-          '[Destination B1 - Unit 29] Trong câu điều kiện loại 2 (Second Conditional), mệnh đề If chia ở thì Quá khứ đơn ("practised") và mệnh đề chính dùng "would + V" ("would improve").',
-        rewardCoins: 45,
-        rewardExp: 55,
-      },
-    ],
+    locationLabel: 'Đại Lộ Cao Ốc Tài Chính Downtown',
+    preferredCategories: ['business_downtown', 'study_academy', 'culture_knowledge'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'david_1',
+          sourceId: 'CAMBRIDGE_GRAMMAR',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📗 Cambridge Grammar • Unit 38: Conditionals (Second Conditional)',
+          npcSpeechEn:
+            '"Good day, young scholar! If you _____ 15 minutes of English vocabulary every day, your fluency would improve remarkably."',
+          contextHintVi:
+            'Câu điều kiện loại 2 (If + S + V2/ed, S + would + V) diễn tả lời khuyên hoặc giả định ở hiện tại.',
+          options: ['practised', 'practise', 'will practise', 'have practised'],
+          correctAnswer: 'practised',
+          explanationVi:
+            '[Cambridge Grammar in Use - Unit 38] Trong câu điều kiện loại 2 (Second Conditional), mệnh đề If chia ở thì Quá khứ đơn ("practised") và mệnh đề chính dùng "would + V" ("would improve").',
+          rewardCoins: 45,
+          rewardExp: 55,
+        },
+      ],
+      ['business_downtown', 'study_academy', 'culture_knowledge']
+    ),
   },
   CITIZEN_HANNAH: {
     id: 'CITIZEN_HANNAH',
@@ -1734,24 +2517,30 @@ export const STREET_NPCS_DIALOGUE_DATA: Record<string, StreetNpcProfile> = {
     role: 'Photographer • Nhiếp Ảnh Gia Đường Phố',
     avatarEmoji: '📸',
     accentColor: '#f59e0b',
-    locationLabel: 'Đại Lộ Đông — Tây',
-    scenarios: [
-      {
-        id: 'hannah_1',
-        questionType: 'multiple_choice',
-        unitSource: 'Destination B1 • Unit 35: Wishes (wish + Past Simple)',
-        npcSpeechEn:
-          '"Look at the golden sunlight over the city rooftops! I love taking street photos, and I wish I _____ a wider camera lens with me right now."',
-        contextHintVi:
-          'Cấu trúc "wish + S + V2/ed" diễn tả mong ước một điều khác với thực tế ở hiện tại.',
-        options: ['had', 'have', 'will have', 'am having'],
-        correctAnswer: 'had',
-        explanationVi:
-          '[Destination B1 - Unit 35] Cấu trúc "wish + Quá khứ đơn (had)" dùng để diễn tả điều ước ở hiện tại ("right now").',
-        rewardCoins: 40,
-        rewardExp: 50,
-      },
-    ],
+    locationLabel: 'Đại Lộ Dân Cư Phía Bắc',
+    preferredCategories: ['daily_social', 'shopping_fashion', 'travel_tourism'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'hannah_1',
+          sourceId: 'CAMBRIDGE_GRAMMAR',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📗 Cambridge Grammar • Unit 41: Wishes (wish + Past Simple)',
+          npcSpeechEn:
+            '"Look at the golden sunlight over the city rooftops! I love taking street photos, and I wish I _____ a wider camera lens with me right now."',
+          contextHintVi:
+            'Cấu trúc "wish + S + V2/ed" diễn tả mong ước một điều khác với thực tế ở hiện tại.',
+          options: ['had', 'have', 'will have', 'am having'],
+          correctAnswer: 'had',
+          explanationVi:
+            '[Cambridge Grammar in Use - Unit 41] Cấu trúc "wish + Quá khứ đơn (had)" dùng để diễn tả điều ước ở hiện tại ("right now").',
+          rewardCoins: 40,
+          rewardExp: 50,
+        },
+      ],
+      ['daily_social', 'shopping_fashion', 'travel_tourism']
+    ),
   },
   NPC_EMMA_LONDON_CAFE: {
     id: 'NPC_EMMA_LONDON_CAFE',
@@ -1760,22 +2549,28 @@ export const STREET_NPCS_DIALOGUE_DATA: Record<string, StreetNpcProfile> = {
     avatarEmoji: '☕',
     accentColor: '#38bdf8',
     locationLabel: 'Trước cửa London Focus Cafe',
-    scenarios: [
-      {
-        id: 'emma_1',
-        questionType: 'multiple_choice',
-        unitSource: 'Destination B1 • Unit 19: Modals (Polite requests)',
-        npcSpeechEn:
-          '"Good day! Welcome to the London Focus Cafe patio. What _____ you like to order before stepping inside our cafe?"',
-        contextHintVi: 'Cấu trúc lịch sự khi mời hoặc hỏi đồ uống bằng tiếng Anh: "What _____ you like...?"',
-        options: ['would', 'will', 'do', 'are'],
-        correctAnswer: 'would',
-        explanationVi:
-          '[Destination B1 - Unit 19] Cấu trúc "What would you like + to V / Noun?" là mẫu câu giao tiếp lịch sự chuẩn mực tại quán cafe và nhà hàng.',
-        rewardCoins: 35,
-        rewardExp: 40,
-      },
-    ],
+    preferredCategories: ['cafe_diner', 'daily_social', 'travel_tourism'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'emma_1',
+          sourceId: 'BRITISH_COUNCIL_CULTURE',
+          cefr: 'A2',
+          questionType: 'multiple_choice',
+          unitSource: '🌍 British Council • Unit 19: Modals (Polite requests)',
+          npcSpeechEn:
+            '"Good day! Welcome to the London Focus Cafe patio. What _____ you like to order before stepping inside our cafe?"',
+          contextHintVi: 'Cấu trúc lịch sự khi mời hoặc hỏi đồ uống bằng tiếng Anh: "What _____ you like...?"',
+          options: ['would', 'will', 'do', 'are'],
+          correctAnswer: 'would',
+          explanationVi:
+            '[British Council Spoken English] Cấu trúc "What would you like + to V / Noun?" là mẫu câu giao tiếp lịch sự chuẩn mực tại quán cafe và nhà hàng.',
+          rewardCoins: 35,
+          rewardExp: 40,
+        },
+      ],
+      ['cafe_diner', 'daily_social', 'travel_tourism']
+    ),
   },
   NPC_ALEX_ACADEMY: {
     id: 'NPC_ALEX_ACADEMY',
@@ -1784,22 +2579,58 @@ export const STREET_NPCS_DIALOGUE_DATA: Record<string, StreetNpcProfile> = {
     avatarEmoji: '🎓',
     accentColor: '#818cf8',
     locationLabel: 'Sân trước Học Viện Anh Ngữ',
-    scenarios: [
-      {
-        id: 'alex_1',
-        questionType: 'multiple_choice',
-        unitSource: 'Destination B1 • Unit 11: The Passive (Present & Past)',
-        npcSpeechEn:
-          '"Welcome to Oxford English Academy! Did you know that English _____ as an official language in over 50 countries around the world?"',
-        contextHintVi: 'Chủ ngữ "English" chịu tác động nên động từ chia ở thể bị động Hiện tại đơn.',
-        options: ['is spoken', 'speaks', 'has spoken', 'speaking'],
-        correctAnswer: 'is spoken',
-        explanationVi:
-          '[Destination B1 - Unit 11] Thể bị động ở thì Hiện tại đơn: "am/is/are + V3/ed" ("English is spoken").',
-        rewardCoins: 45,
-        rewardExp: 55,
-      },
-    ],
+    preferredCategories: ['study_academy', 'culture_knowledge', 'business_downtown'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'alex_1',
+          sourceId: 'CAMBRIDGE_GRAMMAR',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📗 Cambridge Grammar • Unit 42: The Passive (Present & Past)',
+          npcSpeechEn:
+            '"Welcome to Oxford English Academy! Did you know that English _____ as an official language in over 50 countries around the world?"',
+          contextHintVi: 'Chủ ngữ "English" chịu tác động nên động từ chia ở thể bị động Hiện tại đơn.',
+          options: ['is spoken', 'speaks', 'has spoken', 'speaking'],
+          correctAnswer: 'is spoken',
+          explanationVi:
+            '[Cambridge Grammar in Use - Unit 42] Thể bị động ở thì Hiện tại đơn: "am/is/are + V3/ed" ("English is spoken").',
+          rewardCoins: 45,
+          rewardExp: 55,
+        },
+      ],
+      ['study_academy', 'culture_knowledge', 'business_downtown']
+    ),
+  },
+  NPC_SARAH_LIBRARY: {
+    id: 'NPC_SARAH_LIBRARY',
+    name: 'Sarah',
+    role: 'Head Librarian B2 • Thư Viện Oxford',
+    avatarEmoji: '📚',
+    accentColor: '#38bdf8',
+    locationLabel: 'Trước sảnh Thư Viện Thành Phố',
+    preferredCategories: ['study_academy', 'culture_knowledge', 'entertainment_cinema'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'sarah_1',
+          sourceId: 'OXFORD_3000_VOCAB',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📙 Oxford 3000 • Library & Literature Vocabulary',
+          npcSpeechEn:
+            '"Welcome to the Oxford City Library! With your student card, you can _____ up to five English novels at a time for free."',
+          contextHintVi: 'Phân biệt "borrow" (mượn sách từ thư viện) và "lend" (cho ai mượn).',
+          options: ['borrow', 'lend', 'hire', 'pay'],
+          correctAnswer: 'borrow',
+          explanationVi:
+            '[Oxford 3000 Vocabulary] "Borrow something from a library" có nghĩa là mượn sách từ thư viện về đọc.',
+          rewardCoins: 45,
+          rewardExp: 55,
+        },
+      ],
+      ['study_academy', 'culture_knowledge', 'entertainment_cinema']
+    ),
   },
   NPC_LUIGI_DINER: {
     id: 'NPC_LUIGI_DINER',
@@ -1808,22 +2639,28 @@ export const STREET_NPCS_DIALOGUE_DATA: Record<string, StreetNpcProfile> = {
     avatarEmoji: '👨‍🍳',
     accentColor: '#fb923c',
     locationLabel: 'Trước cửa Quán Ăn Cozy Burger & Pizza',
-    scenarios: [
-      {
-        id: 'luigi_1',
-        questionType: 'multiple_choice',
-        unitSource: 'Destination B1 • Unit 30: Body and lifestyle (Food & cooking)',
-        npcSpeechEn:
-          '"Buongiorno! Our fresh Italian pizza dough is _____ in a traditional stone oven at high temperature until the crust is crispy!"',
-        contextHintVi: 'Bánh mì, bánh ngọt và pizza được "nướng bằng lò" dùng động từ nào?',
-        options: ['baked', 'boiled', 'fried', 'steamed'],
-        correctAnswer: 'baked',
-        explanationVi:
-          '[Destination B1 - Unit 30] "Bake" (baked) là nướng bằng lò cho bánh mì, pizza, bánh ngọt; còn "boil" là luộc, "fry" là chiên/rán.',
-        rewardCoins: 35,
-        rewardExp: 40,
-      },
-    ],
+    preferredCategories: ['cafe_diner', 'daily_social', 'shopping_fashion'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'luigi_1',
+          sourceId: 'DESTINATION_B1_B2',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📘 Destination B1 • Unit 30: Body and lifestyle (Food & cooking)',
+          npcSpeechEn:
+            '"Buongiorno! Our fresh Italian pizza dough is _____ in a traditional stone oven at high temperature until the crust is crispy!"',
+          contextHintVi: 'Bánh mì, bánh ngọt và pizza được "nướng bằng lò" dùng động từ nào?',
+          options: ['baked', 'boiled', 'fried', 'steamed'],
+          correctAnswer: 'baked',
+          explanationVi:
+            '[Destination B1 - Unit 30] "Bake" (baked) là nướng bằng lò cho bánh mì, pizza, bánh ngọt; còn "boil" là luộc, "fry" là chiên/rán.',
+          rewardCoins: 35,
+          rewardExp: 40,
+        },
+      ],
+      ['cafe_diner', 'daily_social', 'shopping_fashion']
+    ),
   },
   NPC_LILY_GARDEN: {
     id: 'NPC_LILY_GARDEN',
@@ -1832,22 +2669,28 @@ export const STREET_NPCS_DIALOGUE_DATA: Record<string, StreetNpcProfile> = {
     avatarEmoji: '🌸',
     accentColor: '#f472b6',
     locationLabel: 'Công Viên Hoa Anh Đào',
-    scenarios: [
-      {
-        id: 'lily_1',
-        questionType: 'multiple_choice',
-        unitSource: 'Destination B1 • Unit 36: Nature and the universe',
-        npcSpeechEn:
-          '"Look how peaceful the cherry blossom park is! Let us sit _____ the shade of this big tree and practise English conversation."',
-        contextHintVi: 'Cụm giới từ cố định trong Unit 36: ngồi "trong bóng râm" là "___ the shade".',
-        options: ['in', 'on', 'at', 'to'],
-        correctAnswer: 'in',
-        explanationVi:
-          '[Destination B1 - Unit 36] Cụm giới từ "in the shade (of a tree)" có nghĩa là ở trong bóng râm mát mẻ.',
-        rewardCoins: 35,
-        rewardExp: 40,
-      },
-    ],
+    preferredCategories: ['nature_fishing', 'daily_social', 'culture_knowledge'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'lily_1',
+          sourceId: 'DESTINATION_B1_B2',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📘 Destination B1 • Unit 36: Nature and the universe',
+          npcSpeechEn:
+            '"Look how peaceful the cherry blossom park is! Let us sit _____ the shade of this big tree and practise English conversation."',
+          contextHintVi: 'Cụm giới từ cố định trong Unit 36: ngồi "trong bóng râm" là "___ the shade".',
+          options: ['in', 'on', 'at', 'to'],
+          correctAnswer: 'in',
+          explanationVi:
+            '[Destination B1 - Unit 36] Cụm giới từ "in the shade (of a tree)" có nghĩa là ở trong bóng râm mát mẻ.',
+          rewardCoins: 35,
+          rewardExp: 40,
+        },
+      ],
+      ['nature_fishing', 'daily_social', 'culture_knowledge']
+    ),
   },
   NPC_CHARLIE_CINEMA: {
     id: 'NPC_CHARLIE_CINEMA',
@@ -1856,22 +2699,28 @@ export const STREET_NPCS_DIALOGUE_DATA: Record<string, StreetNpcProfile> = {
     avatarEmoji: '🎬',
     accentColor: '#c084fc',
     locationLabel: 'Sảnh ngoài Rạp Chiếu Phim Thành Phố',
-    scenarios: [
-      {
-        id: 'charlie_1',
-        questionType: 'multiple_choice',
-        unitSource: 'Destination B1 • Unit 24: Entertainment (Cinema & Theatre)',
-        npcSpeechEn:
-          '"Hey movie lover! The new sci-fi adventure film is so popular that all tickets for tonight are completely sold _____!"',
-        contextHintVi: 'Cụm tính từ/phrasal verb "sold _____" có nghĩa là đã bán hết sạch vé.',
-        options: ['out', 'off', 'up', 'away'],
-        correctAnswer: 'out',
-        explanationVi:
-          '[Destination B1 - Unit 24] Cụm từ "sold out" (sell out) có nghĩa là toàn bộ vé hoặc mặt hàng đã được bán hết sạch.',
-        rewardCoins: 35,
-        rewardExp: 40,
-      },
-    ],
+    preferredCategories: ['entertainment_cinema', 'shopping_fashion', 'daily_social'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'charlie_1',
+          sourceId: 'DESTINATION_B1_B2',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📘 Destination B1 • Unit 24: Entertainment (Cinema & Theatre)',
+          npcSpeechEn:
+            '"Hey movie lover! The new sci-fi adventure film is so popular that all tickets for tonight are completely sold _____!"',
+          contextHintVi: 'Cụm tính từ/phrasal verb "sold _____" có nghĩa là đã bán hết sạch vé.',
+          options: ['out', 'off', 'up', 'away'],
+          correctAnswer: 'out',
+          explanationVi:
+            '[Destination B1 - Unit 24] Cụm từ "sold out" (sell out) có nghĩa là toàn bộ vé hoặc mặt hàng đã được bán hết sạch.',
+          rewardCoins: 35,
+          rewardExp: 40,
+        },
+      ],
+      ['entertainment_cinema', 'shopping_fashion', 'daily_social']
+    ),
   },
   NPC_FISHERMAN_JACK: {
     id: 'NPC_FISHERMAN_JACK',
@@ -1880,23 +2729,512 @@ export const STREET_NPCS_DIALOGUE_DATA: Record<string, StreetNpcProfile> = {
     avatarEmoji: '⚓',
     accentColor: '#34d399',
     locationLabel: 'Bến Cảng Gỗ Hồ Câu Cá',
-    scenarios: [
-      {
-        id: 'jack_1',
-        questionType: 'multiple_choice',
-        unitSource: 'Destination B1 • Unit 9 & 36: Weather & Nature',
-        npcSpeechEn:
-          '"Ahoy matey! Press [F] on the wooden pier to cast your fishing rod! The lake water is very _____ today, so the Golden Koi fish are biting fast!"',
-        contextHintVi: 'Tính từ miêu tả mặt nước hồ hoặc biển "êm ả, phẳng lặng, không sóng lớn".',
-        options: ['calm', 'rough', 'heavy', 'loud'],
-        correctAnswer: 'calm',
-        explanationVi:
-          '[Destination B1 - Unit 36] Tính từ "calm" (calm sea / calm water) dùng để tả mặt nước êm ả, phẳng lặng, trái ngược với "rough" (biển động).',
-        rewardCoins: 40,
-        rewardExp: 45,
-      },
-    ],
+    preferredCategories: ['nature_fishing', 'travel_tourism', 'daily_social'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'jack_1',
+          sourceId: 'DESTINATION_B1_B2',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📘 Destination B1 • Unit 9 & 36: Weather & Nature',
+          npcSpeechEn:
+            '"Ahoy matey! Press [F] on the wooden pier to cast your fishing rod! The lake water is very _____ today, so the Golden Koi fish are biting fast!"',
+          contextHintVi: 'Tính từ miêu tả mặt nước hồ hoặc biển "êm ả, phẳng lặng, không sóng lớn".',
+          options: ['calm', 'rough', 'heavy', 'loud'],
+          correctAnswer: 'calm',
+          explanationVi:
+            '[Destination B1 - Unit 36] Tính từ "calm" (calm sea / calm water) dùng để tả mặt nước êm ả, phẳng lặng, trái ngược với "rough" (biển động).',
+          rewardCoins: 40,
+          rewardExp: 45,
+        },
+      ],
+      ['nature_fishing', 'travel_tourism', 'daily_social']
+    ),
+  },
+  NPC_FISHERMAN: {
+    id: 'NPC_FISHERMAN',
+    name: 'Capt. Jack',
+    role: 'Fishing Guide • Bến Cảng Hồ Câu',
+    avatarEmoji: '⚓',
+    accentColor: '#34d399',
+    locationLabel: 'Bến Cảng Gỗ Hồ Câu Cá',
+    preferredCategories: ['nature_fishing', 'travel_tourism', 'daily_social'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'jack_pier_1',
+          sourceId: 'DESTINATION_B1_B2',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📘 Destination B1 • Unit 9 & 36: Weather & Nature',
+          npcSpeechEn:
+            '"Ahoy matey! Press [F] on the wooden pier to cast your fishing rod! The lake water is very _____ today, so the Golden Koi fish are biting fast!"',
+          contextHintVi: 'Tính từ miêu tả mặt nước hồ hoặc biển "êm ả, phẳng lặng, không sóng lớn".',
+          options: ['calm', 'rough', 'heavy', 'loud'],
+          correctAnswer: 'calm',
+          explanationVi:
+            '[Destination B1 - Unit 36] Tính từ "calm" (calm sea / calm water) dùng để tả mặt nước êm ả, phẳng lặng, trái ngược với "rough" (biển động).',
+          rewardCoins: 40,
+          rewardExp: 45,
+        },
+      ],
+      ['nature_fishing', 'travel_tourism', 'daily_social']
+    ),
+  },
+  NPC_OFFICER_TOM: {
+    id: 'NPC_OFFICER_TOM',
+    name: 'Officer Tom',
+    role: 'Downtown Guide B1 • Cảnh Sát Đô Thị',
+    avatarEmoji: '👮🏻‍♂️',
+    accentColor: '#60a5fa',
+    locationLabel: 'Khu Cao Ốc Tài Chính Downtown',
+    preferredCategories: ['auto_transport', 'business_downtown', 'travel_tourism'],
+    scenarios: buildNpcScenariosWithMultiSource(
+      [
+        {
+          id: 'tom_1',
+          sourceId: 'OXFORD_3000_VOCAB',
+          cefr: 'B1',
+          questionType: 'multiple_choice',
+          unitSource: '📙 Oxford 3000 • Road Safety & Downtown Traffic',
+          npcSpeechEn:
+            '"Good day, citizen! Welcome to the Downtown Financial District. Always cross the street at the zebra _____ when the pedestrian light turns green!"',
+          contextHintVi: 'Cụm danh từ "zebra _____" chỉ vạch kẻ sọc trắng đen dành cho người đi bộ sang đường.',
+          options: ['crossing', 'parking', 'building', 'turning'],
+          correctAnswer: 'crossing',
+          explanationVi:
+            '[Oxford 3000 Road Safety] "Zebra crossing" là vạch kẻ đường dành cho người đi bộ qua đường an toàn.',
+          rewardCoins: 45,
+          rewardExp: 50,
+        },
+      ],
+      ['auto_transport', 'business_downtown', 'travel_tourism']
+    ),
   },
 };
 
 
+
+
+// ============================================================================
+// 10. KHO CÂU HỎI TỰ LUẬN & KIẾN THỨC TIẾNG ANH TẠI LỚP HỌC TRỰC TUYẾN • CÔ LAN
+// "NGHE HẾT ĐỀ - GÕ MỚI ĂN ĐIỂM: 100% CÂU HỎI TỰ LUẬN & KIẾN THỨC TIẾNG ANH"
+// ============================================================================
+export interface ClassroomQuizQuestion {
+  id: string;
+  subject: string;
+  subjectBadgeColor: string;
+  prompt: string;
+  hintVi: string;
+  clueLetters: string[];
+  blankPattern: string;
+  options: string[];
+  correctAnswer: string;
+  acceptedAnswers: string[];
+  explanationVi: string;
+  timeLimitSec: number;
+}
+
+export const CLASSROOM_QUIZ_QUESTIONS: ClassroomQuizQuestion[] = [
+  {
+    id: 'eng_q1',
+    subject: 'Tiếng Anh B1 • Phrasal Verbs',
+    subjectBadgeColor: '#2563eb',
+    prompt:
+      'Unit 6 Learning & Doing: Which phrasal verb (2 words) means "to find the meaning of a word in a dictionary"? — "If you do not know this word, _____ it _____ in your dictionary."',
+    hintVi: 'Gợi ý: Cụm động từ gồm 2 từ (4 chữ cái + 2 chữ cái) có nghĩa là "tra từ điển".',
+    clueLetters: ['K', 'O', 'U', 'L', 'P', 'O'],
+    blankPattern: '_ _ _ _   _ _',
+    options: [],
+    correctAnswer: 'look up',
+    acceptedAnswers: ['look up', 'lookup'],
+    explanationVi:
+      '[Destination B1 - Unit 6] Phrasal verb "look up" có nghĩa là tra cứu nghĩa của từ hoặc thông tin trong từ điển/sách tham khảo.',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q2',
+    subject: 'Tiếng Anh B1 • Relative Clauses',
+    subjectBadgeColor: '#2563eb',
+    prompt:
+      'Unit 14 Relative Clauses: Fill in the correct relative pronoun used specifically for things/objects (not people): "The laptop _____ I bought yesterday is very fast."',
+    hintVi: 'Gợi ý: Đại từ quan hệ chỉ vật gồm 5 chữ cái (bắt đầu bằng W).',
+    clueLetters: ['C', 'H', 'W', 'I', 'H'],
+    blankPattern: '_ _ _ _ _',
+    options: [],
+    correctAnswer: 'which',
+    acceptedAnswers: ['which', 'that'],
+    explanationVi:
+      '[Destination B1 - Unit 14] Đại từ quan hệ "which" (hoặc "that") được dùng để thay thế cho danh từ chỉ sự vật, đồ vật.',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q3',
+    subject: 'Tiếng Anh B1 • Prepositions',
+    subjectBadgeColor: '#0284c7',
+    prompt:
+      'Unit 10 Prepositions: Fill in the missing preposition: "She studied very hard and succeeded _____ passing the B1 English exam on her first attempt."',
+    hintVi: 'Gợi ý: Cấu trúc "succeed + giới từ (2 chữ cái) + V-ing" (thành công trong việc gì).',
+    clueLetters: ['N', 'A', 'T', 'I', 'O'],
+    blankPattern: '_ _',
+    options: [],
+    correctAnswer: 'in',
+    acceptedAnswers: ['in'],
+    explanationVi:
+      '[Destination B1 - Unit 10] Cấu trúc cố định: "succeed in doing something" (thành công trong việc làm gì).',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q4',
+    subject: 'Tiếng Anh B1 • Conditionals',
+    subjectBadgeColor: '#7c3aed',
+    prompt:
+      'Unit 29 Second Conditional: Fill in the missing verb form to give advice: "If I _____ you, I would apply for that Oxford scholarship immediately."',
+    hintVi: 'Gợi ý: Động từ to be ở câu điều kiện loại 2 (4 chữ cái: If I ____ you).',
+    clueLetters: ['R', 'E', 'W', 'E'],
+    blankPattern: '_ _ _ _',
+    options: [],
+    correctAnswer: 'were',
+    acceptedAnswers: ['were'],
+    explanationVi:
+      '[Destination B1 - Unit 29] Trong câu điều kiện loại 2 (Second Conditional), cấu trúc khuyên nhủ luôn dùng "If I were you, I would + V".',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q5',
+    subject: 'Tiếng Anh B1 • Reported Speech',
+    subjectBadgeColor: '#2563eb',
+    prompt:
+      'Unit 18 Reported Speech: Convert into Indirect Speech: "I am flying to London tomorrow." -> She said that she _____ flying to London the next day.',
+    hintVi: 'Gợi ý: Lùi thì từ "am" sang quá khứ đơn (3 chữ cái).',
+    clueLetters: ['S', 'A', 'W'],
+    blankPattern: '_ _ _',
+    options: [],
+    correctAnswer: 'was',
+    acceptedAnswers: ['was'],
+    explanationVi:
+      '[Destination B1 - Unit 18] Trong câu tường thuật (Reported Speech), thì Hiện tại tiếp diễn (am flying) lùi về Quá khứ tiếp diễn (was flying).',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q6',
+    subject: 'Tiếng Anh B1 • Passive Voice',
+    subjectBadgeColor: '#059669',
+    prompt:
+      'Unit 11 Passive Voice: Complete the passive sentence in Past Simple (2 words): "They built this school in 1995." -> "This school _____ _____ in 1995."',
+    hintVi: 'Gợi ý: Thể bị động quá khứ đơn gồm 2 từ (was/were + V3 của build).',
+    clueLetters: ['B', 'S', 'I', 'W', 'T', 'U', 'A', 'L'],
+    blankPattern: '_ _ _   _ _ _ _ _',
+    options: [],
+    correctAnswer: 'was built',
+    acceptedAnswers: ['was built', 'wasbuilt'],
+    explanationVi:
+      '[Destination B1 - Unit 11] Thể bị động ở thì Quá khứ đơn: "was/were + V3/ed". Chủ ngữ số ít "This school" đi với "was built".',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q7',
+    subject: 'Tiếng Anh B1 • Articles',
+    subjectBadgeColor: '#d97706',
+    prompt:
+      'Unit 24 Articles: Which article is always used before musical instruments? — "My brother has been learning to play _____ guitar for three years."',
+    hintVi: 'Gợi ý: Mạo từ xác định (3 chữ cái) đứng trước tên các loại nhạc cụ (piano, guitar, violin).',
+    clueLetters: ['E', 'H', 'T'],
+    blankPattern: '_ _ _',
+    options: [],
+    correctAnswer: 'the',
+    acceptedAnswers: ['the'],
+    explanationVi:
+      '[Destination B1 - Unit 24] Khi nói về việc chơi một nhạc cụ (play the guitar, play the piano), ta luôn dùng mạo từ xác định "the".',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q8',
+    subject: 'Kiến Thức Tiếng Anh • Vocabulary',
+    subjectBadgeColor: '#db2777',
+    prompt:
+      'Unit 6 Vocabulary: What verb (6 letters) means "to study again what you have learned in order to prepare for an exam"? — "I have a big test tomorrow, so I must _____ tonight!"',
+    hintVi: 'Gợi ý: Động từ 6 chữ cái có nghĩa là "ôn tập trước kỳ thi" (bắt đầu bằng R).',
+    clueLetters: ['V', 'E', 'R', 'S', 'I', 'E'],
+    blankPattern: '_ _ _ _ _ _',
+    options: [],
+    correctAnswer: 'revise',
+    acceptedAnswers: ['revise', 'review'],
+    explanationVi:
+      '[Destination B1 - Unit 6] Động từ "revise (for an exam)" có nghĩa là ôn tập lại bài vở trước kỳ kiểm tra.',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q9',
+    subject: 'Tiếng Anh B1 • Word Patterns',
+    subjectBadgeColor: '#4f46e5',
+    prompt:
+      'Unit 6 Word Patterns: Fill in the adjective (7 letters) followed by "of": "You have practised every day, so you are definitely _____ of passing the B1 exam!"',
+    hintVi: 'Gợi ý: Tính từ 7 chữ cái đi với "of" nghĩa là "có khả năng / năng lực làm gì" (be _____ of doing sth).',
+    clueLetters: ['P', 'A', 'C', 'L', 'B', 'E', 'A'],
+    blankPattern: '_ _ _ _ _ _ _',
+    options: [],
+    correctAnswer: 'capable',
+    acceptedAnswers: ['capable'],
+    explanationVi:
+      '[Destination B1 - Unit 6] Cấu trúc Word pattern: "be capable of + V-ing / Noun" (có đủ khả năng, năng lực làm gì).',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q10',
+    subject: 'Tiếng Anh B1 • Transport & Travel',
+    subjectBadgeColor: '#0891b2',
+    prompt:
+      'Unit 9 Prepositional Phrases: Which preposition completes the phrase meaning "walking"? — "The school is very close to my house, so I always go to school _____ foot."',
+    hintVi: 'Gợi ý: Cụm giới từ chỉ việc đi bộ là "___ foot" (2 chữ cái).',
+    clueLetters: ['N', 'B', 'Y', 'O'],
+    blankPattern: '_ _',
+    options: [],
+    correctAnswer: 'on',
+    acceptedAnswers: ['on'],
+    explanationVi:
+      '[Destination B1 - Unit 9] Ta luôn dùng "on foot" để chỉ việc đi bộ (nhưng dùng "by car, by bus, by train" cho các phương tiện).',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q11',
+    subject: 'Tiếng Anh B1 • Phrasal Verbs',
+    subjectBadgeColor: '#2563eb',
+    prompt:
+      'Unit 18 Phrasal Verbs: Fill in the past tense verb (5 letters): "We were late for the meeting because our car suddenly _____ down on the highway."',
+    hintVi: 'Gợi ý: Quá khứ đơn của động từ "break" trong cụm "break down" (xe bị hỏng/chết máy giữa đường).',
+    clueLetters: ['K', 'R', 'O', 'E', 'B'],
+    blankPattern: '_ _ _ _ _',
+    options: [],
+    correctAnswer: 'broke',
+    acceptedAnswers: ['broke'],
+    explanationVi:
+      '[Destination B1 - Unit 18] Phrasal verb "break down" (quá khứ: "broke down") dùng khi xe cộ hoặc máy móc bị hỏng, ngừng hoạt động.',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q12',
+    subject: 'Tiếng Anh B1 • Money & Shopping',
+    subjectBadgeColor: '#059669',
+    prompt:
+      'Unit 15 Vocabulary: What Do You Call the piece of paper a shop assistant gives you after you pay for something? (7 letters, silent "p")',
+    hintVi: 'Gợi ý: Danh từ 7 chữ cái có nghĩa là "hóa đơn / biên lai thanh toán" (có chữ p câm ở gần cuối).',
+    clueLetters: ['C', 'E', 'R', 'T', 'I', 'P', 'E'],
+    blankPattern: '_ _ _ _ _ _ _',
+    options: [],
+    correctAnswer: 'receipt',
+    acceptedAnswers: ['receipt'],
+    explanationVi:
+      '[Destination B1 - Unit 15] "Receipt" (/rɪˈsiːt/ - âm p câm) là biên lai hoặc hóa đơn xác nhận đã thanh toán tiền khi mua hàng.',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q13',
+    subject: 'Tiếng Anh B1 • Money & Shopping',
+    subjectBadgeColor: '#059669',
+    prompt:
+      'Unit 15 Word Patterns: Fill in the missing verb (6 letters): "That sports car costs 600 coins! I need to save more money before I can _____ to buy it."',
+    hintVi: 'Gợi ý: Động từ 6 chữ cái đi sau "can/cannot" có nghĩa là "đủ khả năng tài chính để chi trả".',
+    clueLetters: ['F', 'O', 'R', 'A', 'D', 'F'],
+    blankPattern: '_ _ _ _ _ _',
+    options: [],
+    correctAnswer: 'afford',
+    acceptedAnswers: ['afford'],
+    explanationVi:
+      '[Destination B1 - Unit 15] Cấu trúc "can/cannot afford (to do something)" có nghĩa là có/không có đủ tiền để mua thứ gì.',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q14',
+    subject: 'Tiếng Anh B1 • Wishes',
+    subjectBadgeColor: '#9333ea',
+    prompt:
+      'Unit 35 Wishes: Fill in the correct past form of "have": "It is raining heavily outside! I wish I _____ an umbrella with me right now."',
+    hintVi: 'Gợi ý: Ước một điều ở hiện tại dùng "wish + Quá khứ đơn" (quá khứ của have, 3 chữ cái).',
+    clueLetters: ['D', 'A', 'H'],
+    blankPattern: '_ _ _',
+    options: [],
+    correctAnswer: 'had',
+    acceptedAnswers: ['had'],
+    explanationVi:
+      '[Destination B1 - Unit 35] Để diễn tả mong ước trái với thực tế ở hiện tại ("right now"), ta dùng "wish + S + V2/ed" ("I wish I had").',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q15',
+    subject: 'Tiếng Anh B1 • The Causative',
+    subjectBadgeColor: '#e11d48',
+    prompt:
+      'Unit 41 The Causative: Fill in the past participle (V3/ed) of "check": "Before a long trip, I always have my car engine _____ by a professional mechanic."',
+    hintVi: 'Gợi ý: Cấu trúc nhờ người khác làm: "have + vật + V3/ed" (thêm đuôi -ed vào động từ check).',
+    clueLetters: ['K', 'C', 'E', 'D', 'H', 'E', 'C'],
+    blankPattern: '_ _ _ _ _ _ _',
+    options: [],
+    correctAnswer: 'checked',
+    acceptedAnswers: ['checked'],
+    explanationVi:
+      '[Destination B1 - Unit 41] Cấu trúc bị động truyền khiến (The Causative): "have/get + something + V3/ed" ("have my car engine checked").',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q16',
+    subject: 'Kiến Thức Tiếng Anh • UK Culture',
+    subjectBadgeColor: '#0284c7',
+    prompt:
+      'English Knowledge: What is the capital city of the United Kingdom, famous for Big Ben, the River Thames, and red double-decker buses?',
+    hintVi: 'Gợi ý: Tên thủ đô của Vương quốc Anh (6 chữ cái, bắt đầu bằng L).',
+    clueLetters: ['N', 'D', 'O', 'L', 'N', 'O'],
+    blankPattern: '_ _ _ _ _ _',
+    options: [],
+    correctAnswer: 'London',
+    acceptedAnswers: ['london'],
+    explanationVi:
+      'London là thủ đô của Vương quốc Anh (United Kingdom), nổi tiếng với tháp đồng hồ Big Ben, sông Thames và xe buýt 2 tầng màu đỏ.',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q17',
+    subject: 'Tiếng Anh B1 • Question Tags',
+    subjectBadgeColor: '#2563eb',
+    prompt:
+      'Unit 26 Question Tags: Complete the tag question (2 words): "You can speak English fluently, _____ _____?"',
+    hintVi: 'Gợi ý: Câu hỏi đuôi phủ định của "You can..." gồm 2 từ (can\'t you).',
+    clueLetters: ['Y', 'T', 'N', 'U', 'C', 'O', 'A'],
+    blankPattern: "_ _ _ ' _   _ _ _",
+    options: [],
+    correctAnswer: "can't you",
+    acceptedAnswers: ["can't you", 'cant you', 'cannot you'],
+    explanationVi:
+      '[Destination B1 - Unit 26] Khi mệnh đề chính ở thể khẳng định với "You can", câu hỏi đuôi (Question tag) dùng thể phủ định "can\'t you?".',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q18',
+    subject: 'Tiếng Anh B1 • Gerunds & Infinitives',
+    subjectBadgeColor: '#7c3aed',
+    prompt:
+      'Unit 25 Verb Patterns: Fill in the correct form of "meet" after "look forward to": "I really look forward to _____ you at the English Club this weekend!"',
+    hintVi: 'Gợi ý: Sau cụm "look forward to" bắt buộc dùng V-ing (7 chữ cái).',
+    clueLetters: ['G', 'E', 'M', 'I', 'T', 'E', 'N'],
+    blankPattern: '_ _ _ _ _ _ _',
+    options: [],
+    correctAnswer: 'meeting',
+    acceptedAnswers: ['meeting'],
+    explanationVi:
+      '[Destination B1 - Unit 25] Trong cụm "look forward to" (mong đợi điều gì), "to" là giới từ nên động từ theo sau luôn ở dạng V-ing ("meeting").',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q19',
+    subject: 'Tiếng Anh B1 • Collocations',
+    subjectBadgeColor: '#d97706',
+    prompt:
+      'Unit 3 Fun & Games: Which 4-letter verb completes the collocation meaning "to participate in"? — "Over 50 students will _____ part in the school English contest!"',
+    hintVi: 'Gợi ý: Cụm từ cố định "____ part in" = tham gia vào (4 chữ cái, bắt đầu bằng T).',
+    clueLetters: ['K', 'E', 'T', 'A'],
+    blankPattern: '_ _ _ _',
+    options: [],
+    correctAnswer: 'take',
+    acceptedAnswers: ['take'],
+    explanationVi:
+      '[Destination B1 - Unit 3] Collocation cố định: "take part in something" = "participate in something" (tham gia vào hoạt động/cuộc thi).',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q20',
+    subject: 'Tiếng Anh B1 • Food & Cooking',
+    subjectBadgeColor: '#ea580c',
+    prompt:
+      'Unit 30 Vocabulary: What 5-letter past participle verb means "cooked in an oven" (used for bread, cakes, and pizza)? — "Freshly _____ bread smells amazing!"',
+    hintVi: 'Gợi ý: Động từ nướng bánh bằng lò ở dạng V3/ed (5 chữ cái, bắt đầu bằng B).',
+    clueLetters: ['K', 'D', 'B', 'E', 'A'],
+    blankPattern: '_ _ _ _ _',
+    options: [],
+    correctAnswer: 'baked',
+    acceptedAnswers: ['baked'],
+    explanationVi:
+      '[Destination B1 - Unit 30] "Bake" (baked) là nướng bằng lò (dùng cho bánh mì, bánh ngọt, pizza); khác với "boil" (luộc) và "fry" (chiên).',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q21',
+    subject: 'Tiếng Anh B1 • Friends & Relations',
+    subjectBadgeColor: '#ec4899',
+    prompt:
+      'Unit 12 Phrasal Verbs: Fill in the 3-letter verb: "Do you _____ on well with your neighbours in this city?" (Meaning: have a friendly relationship)',
+    hintVi: 'Gợi ý: Cụm động từ "___ on well with somebody" = hòa đồng, thân thiết với ai (3 chữ cái).',
+    clueLetters: ['T', 'E', 'G'],
+    blankPattern: '_ _ _',
+    options: [],
+    correctAnswer: 'get',
+    acceptedAnswers: ['get'],
+    explanationVi:
+      '[Destination B1 - Unit 12] Phrasal verb "get on (well) with somebody" có nghĩa là có mối quan hệ tốt đẹp, hòa thuận với ai.',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q22',
+    subject: 'Tiếng Anh B1 • Nature & Weather',
+    subjectBadgeColor: '#0d9488',
+    prompt:
+      'Unit 36 Vocabulary: Which 4-letter adjective means "peaceful, quiet, and without big waves"? — "The lake water is very _____ today, perfect for fishing!"',
+    hintVi: 'Gợi ý: Tính từ 4 chữ cái tả mặt nước/tâm trạng "êm ả, bình tĩnh, phẳng lặng" (bắt đầu bằng C).',
+    clueLetters: ['M', 'L', 'C', 'A'],
+    blankPattern: '_ _ _ _',
+    options: [],
+    correctAnswer: 'calm',
+    acceptedAnswers: ['calm'],
+    explanationVi:
+      '[Destination B1 - Unit 36] Tính từ "calm" dùng để miêu tả mặt biển/hồ phẳng lặng, không có sóng lớn, hoặc tâm trạng bình tĩnh.',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q23',
+    subject: 'Tiếng Anh B1 • Word Formation',
+    subjectBadgeColor: '#6366f1',
+    prompt:
+      'Unit 33 Materials: What 6-letter natural material comes from plants and is used to make soft, breathable summer T-shirts? — "100% organic _____"',
+    hintVi: 'Gợi ý: Tên chất liệu "vải sợi bông" trong tiếng Anh (6 chữ cái, bắt đầu bằng C).',
+    clueLetters: ['T', 'O', 'C', 'N', 'T', 'O'],
+    blankPattern: '_ _ _ _ _ _',
+    options: [],
+    correctAnswer: 'cotton',
+    acceptedAnswers: ['cotton'],
+    explanationVi:
+      '[Destination B1 - Unit 33] "Cotton" là chất liệu vải bông tự nhiên thoáng mát, rất phổ biến trong từ vựng chủ đề quần áo & thời trang.',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q24',
+    subject: 'Tiếng Anh B1 • Conjunctions',
+    subjectBadgeColor: '#2563eb',
+    prompt:
+      'Unit 34 Contrast Linkers: Fill in the one-word conjunction (8 letters) meaning "despite the fact that": "_____ it was raining heavily, they still walked to school."',
+    hintVi: 'Gợi ý: Liên từ 8 chữ cái có nghĩa là "Mặc dù" (đi trước một mệnh đề S + V, bắt đầu bằng A).',
+    clueLetters: ['T', 'L', 'A', 'H', 'O', 'U', 'G', 'H'],
+    blankPattern: '_ _ _ _ _ _ _ _',
+    options: [],
+    correctAnswer: 'although',
+    acceptedAnswers: ['although', 'even though', 'though'],
+    explanationVi:
+      '[Destination B1 - Unit 34] Liên từ "Although + S + V" (Mặc dù...) dùng để nối hai mệnh đề mang ý nghĩa tương phản nhau.',
+    timeLimitSec: 20,
+  },
+  {
+    id: 'eng_q25',
+    subject: 'Tiếng Anh B1 • Comparatives & Superlatives',
+    subjectBadgeColor: '#0284c7',
+    prompt:
+      'Unit 16 Comparisons: What is the irregular comparative form (6 letters) of the adjective "good"? — "Your English pronunciation is getting _____ every single day!"',
+    hintVi: 'Gợi ý: Dạng so sánh hơn bất quy tắc của "good" (6 chữ cái: tốt hơn).',
+    clueLetters: ['T', 'R', 'B', 'E', 'T', 'E'],
+    blankPattern: '_ _ _ _ _ _',
+    options: [],
+    correctAnswer: 'better',
+    acceptedAnswers: ['better'],
+    explanationVi:
+      '[Destination B1 - Unit 16] Tính từ bất quy tắc "good" chuyển sang so sánh hơn là "better" và so sánh nhất là "the best".',
+    timeLimitSec: 20,
+  },
+];

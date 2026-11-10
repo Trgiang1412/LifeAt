@@ -29,6 +29,8 @@ interface TopBarProps {
   isHost?: boolean;
   onLeaveRoom?: () => void;
   participantCount?: number;
+  pomodoroMinimizedTime?: string | null;
+  onRestoreTimer?: () => void;
 }
 
 export default function TopBar({
@@ -40,6 +42,8 @@ export default function TopBar({
   isHost = true,
   onLeaveRoom,
   participantCount = 1,
+  pomodoroMinimizedTime,
+  onRestoreTimer,
 }: TopBarProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -93,6 +97,8 @@ export default function TopBar({
         isHost={isHost}
         onLeaveRoom={onLeaveRoom}
         participantCount={participantCount}
+        pomodoroMinimizedTime={pomodoroMinimizedTime}
+        onRestoreTimer={onRestoreTimer}
       />
 
       {/* Right: Controls & Decoupled User Menu */}

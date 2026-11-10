@@ -1,98 +1,147 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/models/User';
+import RoomState from '@/models/RoomState';
 import mongoose from 'mongoose';
+
+function escapeRegex(str: string) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const target = (searchParams.get('target') || '').trim();
+    const spaceParamQuery = (searchParams.get('space') || '').trim();
 
-    if (!target) {
+    if (!target && !spaceParamQuery) {
       return NextResponse.json(
-        { message: 'Vui lòng cung cấp link phòng hoặc mã phòng.' },
+        { success: false, message: 'Vui lòng cung cấp link phòng hoặc mã phòng.' },
         { status: 400 }
       );
     }
 
-    // 1. Nếu là URL đầy đủ hoặc đường dẫn /room/...
+    await connectToDatabase();
+
+    // Thu thập danh sách các mã ứng viên cần kiểm tra
+    const candidates: string[] = [];
+
+    if (spaceParamQuery) {
+      candidates.push(spaceParamQuery);
+    }
+
+    // Nếu target chứa đường dẫn /room/
     if (target.includes('/room/')) {
       try {
         const urlObj = target.startsWith('http')
           ? new URL(target)
           : new URL(target, 'http://localhost');
 
-        const pathname = urlObj.pathname;
-        const search = urlObj.search;
-
-        const pathParts = pathname.split('/').filter(Boolean);
+        const pathParts = urlObj.pathname.split('/').filter(Boolean);
         const roomIndex = pathParts.indexOf('room');
         const rawRoomId = roomIndex !== -1 && pathParts[roomIndex + 1] ? pathParts[roomIndex + 1] : '';
+        const spaceFromUrl = urlObj.searchParams.get('space') || '';
 
-        const spaceParam = urlObj.searchParams.get('space') || rawRoomId || 'M7KQ-ILKC';
-        const hostParam = urlObj.searchParams.get('host') || 'LifeAt Room';
+        if (spaceFromUrl) candidates.push(spaceFromUrl);
+        if (rawRoomId) candidates.push(rawRoomId);
+      } catch {
+        // Parse error fallback
+      }
+    } else if (target) {
+      candidates.push(target);
+    }
 
+    // Loại bỏ chuỗi rỗng và trùng lặp
+    const uniqueCandidates = Array.from(new Set(candidates.map((c) => c.trim()).filter(Boolean)));
+
+    let matchedUser = null;
+    let matchedRoomState = null;
+
+    for (const candidate of uniqueCandidates) {
+      // 1. Tìm theo roomId của User (vd: M7KQ-AQ07)
+      matchedUser = await User.findOne({
+        roomId: { $regex: new RegExp(`^${escapeRegex(candidate)}$`, 'i') },
+      });
+      if (matchedUser) break;
+
+      // 2. Tìm theo _id của User (nếu là ObjectId hợp lệ)
+      if (mongoose.Types.ObjectId.isValid(candidate)) {
+        matchedUser = await User.findById(candidate);
+        if (matchedUser) break;
+      }
+
+      // 3. Tìm theo tenDangNhap của User
+      matchedUser = await User.findOne({
+        tenDangNhap: { $regex: new RegExp(`^${escapeRegex(candidate)}$`, 'i') },
+      });
+      if (matchedUser) break;
+
+      // 4. Tìm theo taiKhoan của User
+      matchedUser = await User.findOne({
+        taiKhoan: { $regex: new RegExp(`^${escapeRegex(candidate)}$`, 'i') },
+      });
+      if (matchedUser) break;
+
+      // 5. Tìm trong RoomState đã lưu
+      matchedRoomState = await RoomState.findOne({
+        roomCode: { $regex: new RegExp(`^${escapeRegex(candidate)}$`, 'i') },
+      });
+      if (matchedRoomState) break;
+
+      // 6. Kiểm tra phòng demo mặc định của hệ thống
+      if (candidate.toUpperCase() === 'M7KQ-ILKC') {
         return NextResponse.json({
           success: true,
-          roomUrl: `${pathname}${search}`,
-          roomId: rawRoomId,
-          roomCode: spaceParam,
-          hostName: hostParam,
+          roomUrl: `/room/M7KQ-ILKC?space=M7KQ-ILKC&host=${encodeURIComponent("Trường's Room")}`,
+          roomId: 'M7KQ-ILKC',
+          roomCode: 'M7KQ-ILKC',
+          hostName: "Trường's Room",
         });
-      } catch {
-        // Fallback parse
       }
     }
 
-    // 2. Nếu là mã phòng hoặc tên đăng nhập hoặc ObjectId
-    await connectToDatabase();
-
-    // Thử tìm user có roomId trùng khớp
-    let user = await User.findOne({ roomId: { $regex: new RegExp(`^${target}$`, 'i') } });
-
-    // Nếu không tìm thấy, thử tìm theo _id
-    if (!user && mongoose.Types.ObjectId.isValid(target)) {
-      user = await User.findById(target);
-    }
-
-    // Nếu không tìm thấy, thử tìm theo tenDangNhap
-    if (!user) {
-      user = await User.findOne({
-        tenDangNhap: { $regex: new RegExp(`^${target}$`, 'i') },
-      });
-    }
-
-    if (user) {
-      const roomHost = `${user.tenDangNhap}'s Room`;
-      const roomCode = user.roomId;
-      const roomUrl = `/room/${user._id}?space=${roomCode}&host=${encodeURIComponent(roomHost)}`;
+    if (matchedUser) {
+      const roomHost = `${matchedUser.tenDangNhap}'s Room`;
+      const roomCode = matchedUser.roomId;
+      const roomUrl = `/room/${matchedUser._id}?space=${encodeURIComponent(roomCode)}&host=${encodeURIComponent(roomHost)}`;
 
       return NextResponse.json({
         success: true,
         roomUrl,
-        roomId: user._id.toString(),
+        roomId: matchedUser._id.toString(),
         roomCode,
         hostName: roomHost,
       });
     }
 
-    // 3. Nếu không tìm thấy trong DB nhưng có dạng mã phòng (ví dụ M7KQ-XXXX)
-    const fallbackCode = target.toUpperCase();
-    const fallbackUrl = `/room/${fallbackCode}?space=${fallbackCode}&host=${encodeURIComponent(`Phòng ${fallbackCode}`)}`;
+    if (matchedRoomState) {
+      const roomHost = matchedRoomState.hostName || `Phòng ${matchedRoomState.roomCode}`;
+      const roomCode = matchedRoomState.roomCode;
+      const roomId = matchedRoomState.hostId || roomCode;
+      const roomUrl = `/room/${roomId}?space=${encodeURIComponent(roomCode)}&host=${encodeURIComponent(roomHost)}`;
 
-    return NextResponse.json({
-      success: true,
-      roomUrl: fallbackUrl,
-      roomId: fallbackCode,
-      roomCode: fallbackCode,
-      hostName: `Phòng ${fallbackCode}`,
-    });
+      return NextResponse.json({
+        success: true,
+        roomUrl,
+        roomId,
+        roomCode,
+        hostName: roomHost,
+      });
+    }
+
+    // Không tìm thấy bất kỳ phòng nào hợp lệ -> Báo lỗi 404
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Mã phòng hoặc link phòng không tồn tại trên hệ thống. Vui lòng kiểm tra lại!',
+      },
+      { status: 404 }
+    );
   } catch (error: any) {
     console.error('Lỗi phân giải phòng:', error);
     return NextResponse.json(
-      { message: error.message || 'Lỗi phân giải phòng.' },
+      { success: false, message: error.message || 'Lỗi phân giải phòng.' },
       { status: 500 }
     );
   }
 }
-

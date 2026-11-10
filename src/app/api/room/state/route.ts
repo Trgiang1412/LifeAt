@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import RoomState from '@/models/RoomState';
+import User from '@/models/User';
+import mongoose from 'mongoose';
 import { verifyJwtToken } from '@/lib/auth';
 
 // GET: Lấy trạng thái đồng bộ của phòng (nhạc/space, đồng hồ pomodoro, danh sách người tham gia)
@@ -32,12 +34,43 @@ export async function GET(request: Request) {
     }
 
     if (!state) {
-      // Nếu chưa có, tạo mặc định
-      const hostDisplayName = currentUser?.tenDangNhap || "Trường";
+      // 1. Kiểm tra xem roomCode có thuộc về User nào trên hệ thống không
+      const cleanCode = roomCode.trim();
+      let roomOwner = await User.findOne({
+        roomId: { $regex: new RegExp(`^${cleanCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+      });
+
+      if (!roomOwner && mongoose.Types.ObjectId.isValid(cleanCode)) {
+        roomOwner = await User.findById(cleanCode);
+      }
+
+      if (!roomOwner && currentUser?.userId) {
+        const currentFullUser = await User.findById(currentUser.userId);
+        if (
+          currentFullUser &&
+          (currentFullUser.roomId?.toUpperCase() === cleanCode.toUpperCase() ||
+            currentFullUser._id.toString() === cleanCode)
+        ) {
+          roomOwner = currentFullUser;
+        }
+      }
+
+      // Phòng mặc định khởi tạo của hệ thống
+      const isDefaultRoom = cleanCode.toUpperCase() === 'M7KQ-ILKC';
+
+      if (!roomOwner && !isDefaultRoom) {
+        return NextResponse.json(
+          { success: false, message: 'Phòng học không tồn tại trên hệ thống.' },
+          { status: 404 }
+        );
+      }
+
+      // Chỉ tạo RoomState khi có chủ phòng hợp lệ
+      const hostDisplayName = roomOwner?.tenDangNhap || currentUser?.tenDangNhap || "Trường";
       state = await RoomState.create({
-        roomCode,
-        hostId: currentUser?.userId || '',
-        hostName: currentUser?.tenDangNhap ? `${currentUser.tenDangNhap}'s Room` : "Trường's Room",
+        roomCode: roomOwner?.roomId || cleanCode,
+        hostId: roomOwner ? roomOwner._id.toString() : (currentUser?.userId || ''),
+        hostName: `${hostDisplayName}'s Room`,
         spaceId: 'yt-nestled-above-city',
         spaceStartedAt: Date.now(),
         timer: {
@@ -48,7 +81,7 @@ export async function GET(request: Request) {
         },
         participants: [
           {
-            userId: currentUser?.userId || 'host',
+            userId: roomOwner ? roomOwner._id.toString() : (currentUser?.userId || 'host'),
             name: hostDisplayName,
             isHost: true,
             joinedAt: new Date(),

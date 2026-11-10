@@ -46,6 +46,7 @@ import PersonPinCircleRoundedIcon from '@mui/icons-material/PersonPinCircleRound
 import RotateLeftRoundedIcon from '@mui/icons-material/RotateLeftRounded';
 import RotateRightRoundedIcon from '@mui/icons-material/RotateRightRounded';
 import ExploreRoundedIcon from '@mui/icons-material/ExploreRounded';
+import CheckroomRoundedIcon from '@mui/icons-material/CheckroomRounded';
 import confetti from 'canvas-confetti';
 
 import StreetLamp from './StreetLamp';
@@ -57,6 +58,21 @@ import CityTraffic from './CityTraffic';
 import WalkingNPCs from './WalkingNPC';
 import { HtmlOverlayHost } from './SafeHtml';
 import InteriorSpaceScene, { type ActiveInteriorSpace } from './InteriorSpaceScene';
+import { ClassroomLiveHud, useClassroomQuiz } from './ClassroomQuizSystem';
+import {
+  CinemaLiveHud,
+  CINEMA_YOUTUBE_MOVIES,
+  extractYouTubeVideoId,
+  type CinemaMovieItem,
+} from './CinemaTheaterSystem';
+import {
+  DetailedSmilePlaygroundPark,
+  DetailedWonderlandAmusementPark,
+  AmusementParkHud,
+  AMUSEMENT_RIDES,
+  type AmusementRideId,
+  type AmusementRideConfig,
+} from './AmusementParkSystem';
 import {
   PlayerStarterHouseCap4,
   CentralFountain,
@@ -72,6 +88,7 @@ import {
   SkyscraperTower,
   CozySuburbHouse,
   PlaygroundPark,
+  WonderlandAmusementPark,
   CampingZone,
   TrafficLight,
   ParkBench,
@@ -85,6 +102,7 @@ import {
   HouseFurnitureModal,
   ShopAndWorkModal,
   StreetNpcDialogueModal,
+  WardrobeMixMatchModal,
 } from './WorldInteractiveModals';
 import {
   CITY_SHOPS_DATA,
@@ -94,6 +112,13 @@ import {
   type ShopProductItem,
   type WorkCustomerScenario,
   type StreetNpcScenario,
+  type AvatarTopStyle,
+  type AvatarHatStyle,
+  type AvatarAccessoryStyle,
+  type WorldVehicleType,
+  MODERN_HOUSE_MODELS,
+  type ModernHouseStyleId,
+  type ModernHouseModelItem,
 } from '@/data/worldGameplayData';
 import useDayNightCycle from '@/stores/useDayNightCycle';
 import useMultiplayerStore, {
@@ -122,10 +147,11 @@ export const keyboardMap = [
  */
 const STATIC_CITY_DISTRICTS = [
   { label: '⛲ Quảng Trường Chung', x: 0, z: 5, color: '#38bdf8' },
+  { label: '🎡 Khu Vui Chơi Wonderland', x: -45, z: -10, color: '#ec4899' },
   { label: '☕ Phố Ẩm Thực', x: 26, z: 25, color: '#f43f5e' },
   { label: '🏫 Học Viện & Thư Viện', x: -26, z: 25, color: '#facc15' },
   { label: '🎬 Siêu Thị & Rạp Phim', x: 26, z: -25, color: '#a855f7' },
-  { label: '🎣 Hồ Câu & Trại', x: -30, z: -18, color: '#0284c7' },
+  { label: '🎣 Hồ Câu & Trại', x: -30, z: -24, color: '#0284c7' },
   { label: '🏙️ Khu Cao Ốc', x: 0, z: -56, color: '#60a5fa' },
   { label: '🏘️ Đại Lộ Dân Cư Bắc', x: 0, z: 56, color: '#34d399' },
 ];
@@ -235,8 +261,15 @@ function PlayTogetherCityScene({
   isFishing,
   isSkateboarding,
   activeVehicle,
+  vehicleColor,
   outfitColor,
   hatColor,
+  pantsColor,
+  shoeColor,
+  hairColor,
+  avatarStyle,
+  hatStyle,
+  accessory,
   currentEmote,
   teleportTarget,
   onNearFishingPier,
@@ -246,11 +279,20 @@ function PlayTogetherCityScene({
   onOpenShopModal,
   onStepHouseDoor,
   onStepShopDoor,
+  onStepSchoolDoor,
+  onNearSchoolBuilding,
+  onStepCinemaDoor,
+  onNearCinemaBuilding,
+  activeAmusementRide,
+  onNearAmusementPark,
+  onSelectAmusementRide,
+  onOpenAmusementParkMenu,
   myPlot,
   ownerName,
   houseTitle,
   houseWallColor,
   houseRoofColor,
+  houseStyle = 'traditional',
   houseFurnitureList,
   insidePlotCode,
   forceCutawayRoof,
@@ -260,9 +302,16 @@ function PlayTogetherCityScene({
   onInteractNPC?: (npcId: string) => void;
   isFishing: boolean;
   isSkateboarding: boolean;
-  activeVehicle: 'none' | 'skateboard' | 'vespa' | 'motorbike' | 'sportscar';
+  activeVehicle: WorldVehicleType;
+  vehicleColor?: string;
   outfitColor: string;
   hatColor: string;
+  pantsColor?: string;
+  shoeColor?: string;
+  hairColor?: string;
+  avatarStyle?: AvatarTopStyle;
+  hatStyle?: AvatarHatStyle;
+  accessory?: AvatarAccessoryStyle;
   currentEmote: string | null;
   teleportTarget: { x: number; z: number; id: number } | null;
   onNearFishingPier: (near: boolean) => void;
@@ -272,11 +321,20 @@ function PlayTogetherCityScene({
   onOpenShopModal: (shopId: ShopVenueId) => void;
   onStepHouseDoor: (plotCode: string) => void;
   onStepShopDoor: (shopId: ShopVenueId) => void;
+  onStepSchoolDoor?: () => void;
+  onNearSchoolBuilding?: (near: boolean) => void;
+  onStepCinemaDoor?: () => void;
+  onNearCinemaBuilding?: (near: boolean) => void;
+  activeAmusementRide?: AmusementRideId | null;
+  onNearAmusementPark?: (near: boolean) => void;
+  onSelectAmusementRide?: (rideId: AmusementRideId) => void;
+  onOpenAmusementParkMenu?: () => void;
   myPlot: HousePlotConfig;
   ownerName: string;
   houseTitle: string;
   houseWallColor: string;
   houseRoofColor: string;
+  houseStyle?: ModernHouseStyleId;
   houseFurnitureList: HouseFurnitureRenderItem[];
   insidePlotCode: string | null;
   forceCutawayRoof: boolean;
@@ -329,6 +387,7 @@ function PlayTogetherCityScene({
               houseTitle={houseTitle}
               wallColor={houseWallColor}
               roofColor={houseRoofColor}
+              houseStyle={houseStyle}
               showInteriorCutaway={insidePlotCode === plot.maLoDat || forceCutawayRoof}
               isMyHouse={true}
               plotLabel={plot.tenLoDat}
@@ -347,6 +406,7 @@ function PlayTogetherCityScene({
               houseTitle={neighbor.houseTitle || `Nhà Cấp 4 của ${neighbor.username}`}
               wallColor={neighbor.houseWallColor || plot.defaultWallColor}
               roofColor={neighbor.houseRoofColor || plot.defaultRoofColor}
+              houseStyle={neighbor.houseStyle || 'traditional'}
               showInteriorCutaway={insidePlotCode === plot.maLoDat}
               isMyHouse={false}
               plotLabel={plot.tenLoDat}
@@ -355,30 +415,22 @@ function PlayTogetherCityScene({
           );
         }
 
-        // Các lô đất trên Đại Lộ Bắc chưa có người chơi online thì hiển thị nhà ngoại ô mẫu
-        if (plot.position[2] >= 60) {
-          return (
-            <CozySuburbHouse
-              key={plot.maLoDat}
-              position={plot.position}
-              wallColor={plot.defaultWallColor}
-              roofColor={plot.defaultRoofColor}
-              ownerLabel={`🏘️ ${plot.tenLoDat.split('•')[0].trim()} (Đất Trống)`}
-            />
-          );
-        }
-
-        return null;
+        // Các lô đất chưa có người chơi online thì hiển thị nhà ngoại ô mẫu để bản đồ không bị trống
+        return (
+          <CozySuburbHouse
+            key={plot.maLoDat}
+            position={plot.position}
+            wallColor={plot.defaultWallColor}
+            roofColor={plot.defaultRoofColor}
+            ownerLabel={`🏘️ ${plot.tenLoDat.split('•')[0].trim()}`}
+          />
+        );
       })}
 
       {/* ================================================================= */}
-      {/* KHU VỰC 1: QUẢNG TRƯỜNG TRUNG TÂM (CENTRAL PLAZA)                 */}
+      {/* KHU VỰC 1: QUẢNG TRƯỜNG TRUNG TÂM & ĐÀI PHUN NƯỚC (CENTRAL PLAZA)  */}
       {/* ================================================================= */}
       <CentralFountain position={[0, 0, 0]} />
-      <ParkBench position={[-7.5, 0, 0]} rotationY={Math.PI / 2} />
-      <ParkBench position={[7.5, 0, 0]} rotationY={-Math.PI / 2} />
-      <ParkBench position={[0, 0, -7.5]} rotationY={0} />
-      <ParkBench position={[0, 0, 7.5]} rotationY={Math.PI} />
 
       {/* ================================================================= */}
       {/* KHU VỰC 2: KHU GIÁO DỤC & VĂN HÓA (TÂY BẮC: X < 0, Z > 0)        */}
@@ -407,10 +459,19 @@ function PlayTogetherCityScene({
       <CinemaTheaterBuilding position={[35, 0, -13]} />
 
       {/* ================================================================= */}
-      {/* KHU VỰC 5: HỒ CÂU CÁ, CÔNG VIÊN & CẮM TRẠI (TÂY NAM: X < 0, Z < 0)*/}
+      {/* KHU VỰC 5: KHU VUI CHƠI GIẢI TRÍ, HỒ CÂU CÁ & CẮM TRẠI (BÊN TRÁI)  */}
       {/* ================================================================= */}
-      <FishingLakeAndPier position={[-36, 0, -28]} onNearFishingPier={onNearFishingPier} />
-      <PlaygroundPark position={[-33, 0, -8]} />
+      <FishingLakeAndPier position={[-36, 0, -29]} onNearFishingPier={onNearFishingPier} />
+      <DetailedSmilePlaygroundPark
+        position={[-35, 0, -9]}
+        onSelectRide={onSelectAmusementRide}
+        onOpenParkMenu={onOpenAmusementParkMenu}
+      />
+      <DetailedWonderlandAmusementPark
+        position={[-64, 0, -14]}
+        onSelectRide={onSelectAmusementRide}
+        onOpenParkMenu={onOpenAmusementParkMenu}
+      />
       <CampingZone position={[-42, 0, -43]} />
 
       {/* ================================================================= */}
@@ -501,15 +562,22 @@ function PlayTogetherCityScene({
       <PlayerPhysics
         initialPosition={
           teleportTarget
-            ? [teleportTarget.x, 1.2, teleportTarget.z]
+            ? [teleportTarget.x, 0.65, teleportTarget.z]
             : myPlot.spawnPosition
         }
         housePosition={myPlot.position}
         isFishing={isFishing}
         isSkateboarding={isSkateboarding}
         activeVehicle={activeVehicle}
+        vehicleColor={vehicleColor}
         outfitColor={outfitColor}
         hatColor={hatColor}
+        pantsColor={pantsColor}
+        shoeColor={shoeColor}
+        hairColor={hairColor}
+        avatarStyle={avatarStyle}
+        hatStyle={hatStyle}
+        accessory={accessory}
         currentEmote={currentEmote}
         teleportTarget={teleportTarget}
         cameraOrbitAngle={cameraOrbitAngle}
@@ -519,6 +587,12 @@ function PlayTogetherCityScene({
         onNearShopVenue={onNearShopVenue}
         onStepHouseDoor={onStepHouseDoor}
         onStepShopDoor={onStepShopDoor}
+        onStepSchoolDoor={onStepSchoolDoor}
+        onNearSchoolBuilding={onNearSchoolBuilding}
+        onStepCinemaDoor={onStepCinemaDoor}
+        onNearCinemaBuilding={onNearCinemaBuilding}
+        activeAmusementRide={activeAmusementRide}
+        onNearAmusementPark={onNearAmusementPark}
       />
 
       {remotePlayerList.map((player) => (
@@ -545,7 +619,7 @@ function PlayTogetherCityScene({
         position={[29, 0.2, 13]}
         rotationY={-Math.PI / 3}
         badgeColor="#ea580c"
-        onInteract={() => onInteractNPC?.('NPC_EMMA_LONDON_CAFE')}
+        onInteract={() => onInteractNPC?.('NPC_LUIGI_DINER')}
       />
 
       <NPC
@@ -565,17 +639,17 @@ function PlayTogetherCityScene({
         position={[-29, 0.2, 13]}
         rotationY={Math.PI / 3}
         badgeColor="#38bdf8"
-        onInteract={() => onInteractNPC?.('NPC_ALEX_ACADEMY')}
+        onInteract={() => onInteractNPC?.('NPC_SARAH_LIBRARY')}
       />
 
       <NPC
-        id="NPC_FISHERMAN"
+        id="NPC_FISHERMAN_JACK"
         name="Captain Jack"
         role="Bến Câu Cá • Hướng dẫn A1"
         position={[-30, 0.2, -19]}
         rotationY={Math.PI / 4}
         badgeColor="#0284c7"
-        onInteract={() => onInteractNPC?.('NPC_EMMA_LONDON_CAFE')}
+        onInteract={() => onInteractNPC?.('NPC_FISHERMAN_JACK')}
       />
 
       <NPC
@@ -585,7 +659,27 @@ function PlayTogetherCityScene({
         position={[0, 0.2, -56]}
         rotationY={0}
         badgeColor="#60a5fa"
-        onInteract={() => onInteractNPC?.('NPC_ALEX_ACADEMY')}
+        onInteract={() => onInteractNPC?.('NPC_OFFICER_TOM')}
+      />
+
+      <NPC
+        id="NPC_CHARLIE_CINEMA"
+        name="Charlie (Cinema)"
+        role="GRAND IMAX • Tiếng Anh B1"
+        position={[29, 0.2, -9]}
+        rotationY={-Math.PI / 4}
+        badgeColor="#c084fc"
+        onInteract={() => onInteractNPC?.('NPC_CHARLIE_CINEMA')}
+      />
+
+      <NPC
+        id="NPC_LILY_GARDEN"
+        name="Lily (Park)"
+        role="Cherry Park • Tiếng Anh A2"
+        position={[-28, 0.2, -6]}
+        rotationY={Math.PI / 4}
+        badgeColor="#f472b6"
+        onInteract={() => onInteractNPC?.('NPC_LILY_GARDEN')}
       />
     </>
   );
@@ -661,6 +755,8 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
 
   // Trạng thái 4 Quán (Cafe, Quán Ăn, Quần Áo, Xe) & Không Gian Nội Thất 3D
   const [nearShopVenue, setNearShopVenue] = useState<ShopVenueId | null>(null);
+  const [isNearSchool, setIsNearSchool] = useState<boolean>(false);
+  const [isNearCinema, setIsNearCinema] = useState<boolean>(false);
   const [activeShopModal, setActiveShopModal] = useState<ShopVenueId | null>(null);
   const [shopModalInitialTab, setShopModalInitialTab] = useState<'buy' | 'work'>('buy');
   const [activeInteriorSpace, setActiveInteriorSpace] = useState<ActiveInteriorSpace | null>(null);
@@ -669,15 +765,81 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
   const [selectedFurnitureIndex, setSelectedFurnitureIndex] = useState<number | null>(null);
   const [workScenarioIndex, setWorkScenarioIndex] = useState<number>(0);
 
-  // Trang phục & Phương tiện người chơi đang sử dụng
+  // Trạng thái Rạp Chiếu Phim IMAX YouTube
+  const isCinemaInteriorActive = activeInteriorSpace?.kind === 'CINEMA';
+  const [hasCinemaTicket, setHasCinemaTicket] = useState<boolean>(false);
+  const [activeCinemaMovie, setActiveCinemaMovie] = useState<CinemaMovieItem>(
+    CINEMA_YOUTUBE_MOVIES[0]
+  );
+  const [customYoutubeUrl, setCustomYoutubeUrl] = useState<string>('');
+  const [isCinemaLightsDimmed, setIsCinemaLightsDimmed] = useState<boolean>(true);
+  const [isCinemaScreenExpanded, setIsCinemaScreenExpanded] = useState<boolean>(false);
+  const [localCoinDelta, setLocalCoinDelta] = useState<number>(0);
+  const effectivePlayerCoins = Math.max(0, (user?.tien ?? 250) + localCoinDelta);
+
+  // Trạng thái Khu Vui Chơi Giải Trí 3D (Wonderland & Smile Park)
+  const [isNearAmusementPark, setIsNearAmusementPark] = useState<boolean>(false);
+  const [activeAmusementRide, setActiveAmusementRide] = useState<AmusementRideId | null>(null);
+  const [rideTimeLeft, setRideTimeLeft] = useState<number>(0);
+  const [isAmusementTicketModalOpen, setIsAmusementTicketModalOpen] = useState<boolean>(false);
+
+  // Hook Quản lý lớp học trực tuyến • Cô Lan
+  const isSchoolInteriorActive = activeInteriorSpace?.kind === 'SCHOOL';
+  const classroomQuizState = useClassroomQuiz(
+    isSchoolInteriorActive,
+    async (coins, exp, rankTitle) => {
+      if (token) {
+        try {
+          await fetch('/api/world/action', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              action: 'reward',
+              coins,
+              exp,
+            }),
+          });
+          await refreshUser();
+        } catch {}
+      }
+      setToastMessage(`🏆 ${rankTitle}! Nhận ngay +${coins} Xu & +${exp} Điểm/EXP!`);
+    }
+  );
+
+  // Trang phục (Mix & Match) & Phương tiện người chơi đang sử dụng
+  const [avatarStyle, setAvatarStyle] = useState<AvatarTopStyle>('streetwear');
   const [outfitColor, setOutfitColor] = useState<string>('#38bdf8');
   const [hatColor, setHatColor] = useState<string>('#f59e0b');
-  const [activeVehicle, setActiveVehicle] = useState<
-    'none' | 'skateboard' | 'vespa' | 'motorbike' | 'sportscar'
-  >('none');
+  const [pantsColor, setPantsColor] = useState<string>('#1e293b');
+  const [shoeColor, setShoeColor] = useState<string>('#ffffff');
+  const [hairColor, setHairColor] = useState<string>('#0f172a');
+  const [hatStyle, setHatStyle] = useState<AvatarHatStyle>('snapback');
+  const [accessory, setAccessory] = useState<AvatarAccessoryStyle>('headphones');
+  const [activeVehicle, setActiveVehicle] = useState<WorldVehicleType>('none');
+  const [vehicleColor, setVehicleColor] = useState<string>('#f59e0b');
+  const [isWardrobeOpen, setIsWardrobeOpen] = useState<boolean>(false);
 
-  // Tùy chỉnh Ngôi Nhà Cấp 4 & Nội thất 3D của người chơi
+  // Helper chuẩn hóa mẫu nhà hiện đại
+  const normalizeHouseStyle = (raw?: string): ModernHouseStyleId => {
+    if (
+      raw === 'minimalist' ||
+      raw === 'eco_garden' ||
+      raw === 'cyber_loft' ||
+      raw === 'luxury_mansion'
+    ) {
+      return raw;
+    }
+    return 'traditional';
+  };
+
+  // Tùy chỉnh Ngôi Nhà Cấp 4 & Biệt Thự Hiện Đại 3D của người chơi
   const ownerName = user?.tenDangNhap || 'Cư dân';
+  const [houseStyle, setHouseStyle] = useState<ModernHouseStyleId>(() =>
+    normalizeHouseStyle(user?.nhaNguoiChoi?.moHinhNgoaiThat)
+  );
   const [houseTitle, setHouseTitle] = useState<string>(
     user?.nhaNguoiChoi?.tenNha || `Nhà Cấp 4 của ${ownerName}`
   );
@@ -733,6 +895,7 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
       houseTitle: user?.nhaNguoiChoi?.tenNha || `Nhà Cấp 4 của ${user?.tenDangNhap || 'Cư dân'}`,
       houseWallColor: user?.nhaNguoiChoi?.mauTuong || '#f5ebd6',
       houseRoofColor: user?.nhaNguoiChoi?.mauMai || '#b93829',
+      houseStyle: houseStyle,
       houseFurniture: houseFurnitureList,
     });
     return () => {
@@ -746,9 +909,11 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
       const nextTitle = user.nhaNguoiChoi?.tenNha || `Nhà Cấp 4 của ${user.tenDangNhap}`;
       const nextWall = user.nhaNguoiChoi?.mauTuong || '#f5ebd6';
       const nextRoof = user.nhaNguoiChoi?.mauMai || '#b93829';
+      const nextStyle = normalizeHouseStyle(user.nhaNguoiChoi?.moHinhNgoaiThat);
       setHouseTitle(nextTitle);
       setHouseWallColor(nextWall);
       setHouseRoofColor(nextRoof);
+      setHouseStyle(nextStyle);
       if (user.nhaNguoiChoi?.danhSachNoiThat && user.nhaNguoiChoi.danhSachNoiThat.length > 0) {
         setHouseFurnitureList(user.nhaNguoiChoi.danhSachNoiThat);
       }
@@ -764,6 +929,7 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
         houseTitle: nextTitle,
         houseWallColor: nextWall,
         houseRoofColor: nextRoof,
+        houseStyle: nextStyle,
         houseFurniture: user.nhaNguoiChoi?.danhSachNoiThat || houseFurnitureList,
       });
     }
@@ -874,6 +1040,50 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
     } catch {}
   };
 
+  // 3B. Nâng cấp mẫu nhà hiện đại (Scandinavian, Eco Garden, Cyber Loft, Luxury Mansion)
+  const handleUpgradeHouseModel = async (model: ModernHouseModelItem) => {
+    if (!token) {
+      setToastMessage('⚠️ Vui lòng đăng nhập để nâng cấp mẫu nhà.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/world/action', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: 'upgrade_house_model',
+          modelId: model.styleId,
+          modelName: model.name,
+          price: model.priceCoins,
+          wallColor: model.defaultWallColor,
+          roofColor: model.defaultRoofColor,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.thanhCong) {
+        setToastMessage(data.message || 'Không thể xây dựng mẫu nhà.');
+        return;
+      }
+      setHouseStyle(model.styleId);
+      if (model.defaultWallColor) setHouseWallColor(model.defaultWallColor);
+      if (model.defaultRoofColor) setHouseRoofColor(model.defaultRoofColor);
+      setHouseTitle(model.name);
+      updateProfile({
+        houseTitle: model.name,
+        houseWallColor: model.defaultWallColor,
+        houseRoofColor: model.defaultRoofColor,
+        houseStyle: model.styleId,
+      });
+      await refreshUser();
+      setToastMessage(`🏡 Chúc mừng! Bạn đã xây dựng thành công "${model.name}"!`);
+    } catch {
+      setToastMessage('Lỗi kết nối khi xây dựng mẫu nhà.');
+    }
+  };
+
   // 4. Mua đồ ăn uống, quần áo, xe cộ tại 4 Quán (Cafe, Diner, Clothing, Car Showroom)
   const handleBuyShopItem = async (item: ShopProductItem) => {
     if (!token) {
@@ -901,12 +1111,18 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
         return;
       }
       setOwnedItemCodes((prev) => Array.from(new Set([...prev, item.id])));
-      if (item.category === 'clothing' && item.outfitColor) {
-        setOutfitColor(item.outfitColor);
+      if (item.category === 'clothing') {
+        if (item.outfitColor) setOutfitColor(item.outfitColor);
         if (item.hatColor) setHatColor(item.hatColor);
+        if (item.pantsColor) setPantsColor(item.pantsColor);
+        if (item.shoeColor) setShoeColor(item.shoeColor);
+        if (item.avatarStyle) setAvatarStyle(item.avatarStyle);
+        if (item.hatStyle) setHatStyle(item.hatStyle);
+        if (item.accessory) setAccessory(item.accessory);
       }
       if (item.category === 'vehicle' && item.vehicleType) {
         setActiveVehicle(item.vehicleType);
+        if (item.vehicleColor) setVehicleColor(item.vehicleColor);
         setIsSkateboarding(item.vehicleType === 'skateboard');
       }
       await refreshUser();
@@ -999,7 +1215,7 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
 
       const returnCoords: [number, number, number] = [
         plotCfg.position[0],
-        1.2,
+        0.65,
         plotCfg.position[2] - 5.8,
       ];
       setIsFishing(false);
@@ -1036,10 +1252,10 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
   // Bước vào Không Gian Nội Thất 3D của 1 trong 4 Quán (Cafe, Quán Ăn, Quần Áo, Showroom Xe)
   const handleEnterShopSpace = useCallback((shopId: ShopVenueId) => {
     const returnMap: Record<ShopVenueId, [number, number, number]> = {
-      CAFE: [34, 1.2, 42.5],
-      DINER: [35, 1.2, 20.5],
-      CLOTHING: [12, 1.2, -26.5],
-      CAR_SHOWROOM: [-12, 1.2, -26.0],
+      CAFE: [34, 0.65, 42.5],
+      DINER: [35, 0.65, 20.5],
+      CLOTHING: [12, 0.65, -26.5],
+      CAR_SHOWROOM: [-12, 0.65, -26.0],
     };
     const returnCoords = returnMap[shopId];
     setIsFishing(false);
@@ -1061,14 +1277,278 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
     );
   }, []);
 
-  // Bước từ Cửa Thoát trong phòng ra lại đúng vị trí trước cửa Quán / Nhà vừa vào
+  // Bước vào Không Gian Lớp Học Quốc Tế Trực Tuyến • Cô Lan
+  const handleEnterSchoolSpace = useCallback(() => {
+    setIsFishing(false);
+    setSelectedFurnitureIndex(null);
+    setInteriorZone(null);
+    setIsWorkingAsStaff(false);
+    setTeleportTarget({
+      x: 0,
+      z: 2.05,
+      id: Date.now(),
+    });
+    setActiveInteriorSpace({
+      kind: 'SCHOOL',
+      returnPosition: [-35, 0.65, 46.5],
+    });
+    setToastMessage('🏫 Đã bước vào Lớp Học Trực Tuyến • Cô Lan! Hãy ngồi ngay ngắn tại bàn và trả lời câu hỏi!');
+  }, []);
+
+  // Bước vào Không Gian Rạp Chiếu Phim Quốc Tế GRAND IMAX CINEMA
+  const handleEnterCinemaSpace = useCallback(() => {
+    setIsFishing(false);
+    setSelectedFurnitureIndex(null);
+    setInteriorZone(null);
+    setIsWorkingAsStaff(false);
+    setTeleportTarget({
+      x: 0,
+      z: 9.5,
+      id: Date.now(),
+    });
+    setActiveInteriorSpace({
+      kind: 'CINEMA',
+      returnPosition: [35, 0.65, -4.5],
+    });
+    setToastMessage('🎬 Đã bước vào Rạp Chiếu Phim GRAND IMAX! Hãy mua vé bằng Xu để xem phim YouTube trên màn ảnh rộng!');
+  }, []);
+
+  // Mua vé xem phim IMAX bằng Xu để bật màn chiếu YouTube
+  const handleBuyCinemaTicket = useCallback(
+    async (ticketPrice: number, expBonus: number, comboName: string) => {
+      if (effectivePlayerCoins < ticketPrice) {
+        setToastMessage(
+          `⚠️ Bạn cần ${ticketPrice} Xu để mua "${comboName}" (Hiện có: ${effectivePlayerCoins} Xu). Hãy vào Trường Học hoặc các Quán làm việc kiếm thêm Xu nhé!`
+        );
+        return;
+      }
+
+      setLocalCoinDelta((prev) => prev - ticketPrice);
+      setHasCinemaTicket(true);
+      confetti({
+        particleCount: 60,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
+      playCelebrationChime();
+
+      if (token) {
+        try {
+          await fetch('/api/world/action', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              action: 'buy_shop_item',
+              code: `CINEMA_TICKET_${Date.now()}`,
+              price: ticketPrice,
+              category: 'food',
+              expReward: expBonus,
+            }),
+          });
+          setLocalCoinDelta(0);
+          await refreshUser();
+        } catch {}
+      }
+
+      setToastMessage(
+        `🎟️ Đã mua "${comboName}" (-${ticketPrice} Xu, +${expBonus} EXP)! Màn chiếu YouTube IMAX đã sẵn sàng!`
+      );
+    },
+    [effectivePlayerCoins, token, refreshUser]
+  );
+
+  // Dán link YouTube bất kỳ để chiếu trực tiếp lên màn chiếu rạp
+  const handleApplyCustomYoutubeUrl = useCallback(() => {
+    const videoId = extractYouTubeVideoId(customYoutubeUrl);
+    if (!videoId) {
+      setToastMessage(
+        '⚠️ Link YouTube không hợp lệ! Vui lòng dán link dạng https://www.youtube.com/watch?v=... hoặc https://youtu.be/...'
+      );
+      return;
+    }
+    if (!hasCinemaTicket) {
+      setToastMessage(
+        '🎟️ Vui lòng mua Vé Xem Phim (50 Xu) trước khi bật máy chiếu YouTube nhé!'
+      );
+      return;
+    }
+    setActiveCinemaMovie({
+      id: `custom_${videoId}`,
+      title: `Phim YouTube Tự Chọn (${videoId})`,
+      category: '📽️ YouTube Tự Chọn',
+      duration: 'HD IMAX',
+      youtubeId: videoId,
+      badgeColor: '#2563eb',
+      description: 'Video YouTube do người chơi trình chiếu trực tiếp tại rạp IMAX.',
+    });
+    setCustomYoutubeUrl('');
+    setToastMessage('📽️ Đang trình chiếu video YouTube của bạn lên màn ảnh rộng IMAX!');
+  }, [customYoutubeUrl, hasCinemaTicket]);
+
+  // Mua vé và bắt đầu chơi trò chơi tại Khu Vui Chơi 3D
+  const handlePurchaseAndStartRide = useCallback(
+    async (ride: AmusementRideConfig) => {
+      if (effectivePlayerCoins < ride.ticketCost) {
+        setToastMessage(
+          `⚠️ Bạn cần ${ride.ticketCost} Xu để mua vé chơi "${ride.name}" (Hiện có: ${effectivePlayerCoins} Xu)!`
+        );
+        return;
+      }
+
+      setLocalCoinDelta((prev) => prev - ride.ticketCost);
+      setIsAmusementTicketModalOpen(false);
+      setIsFishing(false);
+      setIsSkateboarding(false);
+      setActiveVehicle('none');
+      setActiveAmusementRide(ride.id);
+      setRideTimeLeft(ride.durationSec);
+      playCelebrationChime();
+
+      if (token) {
+        try {
+          await fetch('/api/world/action', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              action: 'buy_shop_item',
+              code: `AMUSEMENT_RIDE_${ride.id}_${Date.now()}`,
+              price: ride.ticketCost,
+              category: 'food',
+              expReward: ride.expReward,
+            }),
+          });
+          setLocalCoinDelta(0);
+          await refreshUser();
+        } catch {}
+      }
+
+      setToastMessage(
+        `🎟️ Đã mua vé "${ride.name}" (-${ride.ticketCost} Xu, +${ride.expReward} EXP)! Đang khởi hành trò chơi 3D!`
+      );
+    },
+    [effectivePlayerCoins, token, refreshUser]
+  );
+
+  // Dừng trò chơi và đưa người chơi xuống cổng trò chơi an toàn
+  const handleStopAmusementRide = useCallback(() => {
+    if (!activeAmusementRide) return;
+    const rideCfg = AMUSEMENT_RIDES.find((r) => r.id === activeAmusementRide);
+    setActiveAmusementRide(null);
+    setRideTimeLeft(0);
+    if (rideCfg) {
+      setTeleportTarget({
+        x: rideCfg.exitPosition[0],
+        z: rideCfg.exitPosition[2],
+        id: Date.now(),
+      });
+      setToastMessage(
+        `🎠 Đã hoàn thành lượt chơi "${rideCfg.name}"! Nhận +${rideCfg.expReward} EXP!`
+      );
+    }
+  }, [activeAmusementRide]);
+
+  // Bộ đếm ngược thời gian khi đang ngồi trên trò chơi 3D
+  useEffect(() => {
+    if (!activeAmusementRide) return;
+    const interval = setInterval(() => {
+      setRideTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          handleStopAmusementRide();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activeAmusementRide, handleStopAmusementRide]);
+
+  // Click trực tiếp vào mô hình 3D của một trò chơi ngoài bản đồ
+  const handleSelectRideFrom3D = useCallback(
+    (rideId: AmusementRideId) => {
+      const ride = AMUSEMENT_RIDES.find((r) => r.id === rideId);
+      if (!ride) return;
+      handlePurchaseAndStartRide(ride);
+    },
+    [handlePurchaseAndStartRide]
+  );
+
+  // Thưởng hoặc trừ Xu khi chơi Minigame Săn Thưởng Carnival (20 Xu)
+  const handleRewardCarnivalQuiz = useCallback(
+    async (netCoins: number, exp: number, message: string) => {
+      setLocalCoinDelta((prev) => prev + netCoins);
+      if (netCoins > 0) {
+        playCelebrationChime();
+        try {
+          confetti({ particleCount: 55, spread: 65, origin: { y: 0.6 } });
+        } catch {}
+      }
+      if (token) {
+        try {
+          if (netCoins > 0) {
+            await fetch('/api/world/action', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                action: 'reward',
+                coins: netCoins,
+                exp,
+              }),
+            });
+          } else {
+            await fetch('/api/world/action', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                action: 'buy_shop_item',
+                code: `CARNIVAL_TICKET_${Date.now()}`,
+                price: Math.abs(netCoins),
+                category: 'food',
+                expReward: exp,
+              }),
+            });
+          }
+          setLocalCoinDelta(0);
+          await refreshUser();
+        } catch {}
+      }
+      setToastMessage(message);
+    },
+    [token, refreshUser]
+  );
+
+  // Bước từ Cửa Thoát trong phòng ra lại đúng vị trí trước cửa Quán / Nhà / Trường học / Rạp phim
   const handleExitInteriorSpace = useCallback(() => {
     if (!activeInteriorSpace) return;
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    if (typeof window !== 'undefined') {
+      ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].forEach((code) => {
+        window.dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true }));
+      });
+    }
     const ret = activeInteriorSpace.returnPosition;
     const exitLabel =
       activeInteriorSpace.kind === 'SHOP'
         ? `🚶 Đã bước ra trước cửa ${CITY_SHOPS_DATA[activeInteriorSpace.shopId].title}!`
-        : `🚶 Đã bước ra trước cổng ${activeInteriorSpace.houseTitle}!`;
+        : activeInteriorSpace.kind === 'SCHOOL'
+          ? '🚶 Đã bước ra trước sảnh Trường Học Quốc Tế!'
+          : activeInteriorSpace.kind === 'CINEMA'
+            ? '🚶 Đã bước ra trước sảnh Rạp Chiếu Phim GRAND IMAX!'
+            : `🚶 Đã bước ra trước cổng ${activeInteriorSpace.houseTitle}!`;
 
     setTeleportTarget({
       x: ret[0],
@@ -1098,11 +1578,26 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
       : houseFurnitureList;
   }, [activeInteriorSpace, houseFurnitureList, onlinePlayersList]);
 
-  // Khách hàng NPC đang vào hỏi mua đồ trong Quán
+  // Bộ nhớ theo dõi lịch sử khách hàng NPC vào quán để đảm bảo random KHÔNG TRÙNG LẶP
+  const sessionShopWorkCustomerHistoryRef = useRef<Record<string, string[]>>({});
+
+  // Khách hàng NPC đang vào hỏi mua đồ trong Quán (chọn ngẫu nhiên KHÔNG TRÙNG LẶP)
   const activeShopWorkScenario = useMemo(() => {
     if (!activeInteriorSpace || activeInteriorSpace.kind !== 'SHOP') return null;
-    const list = CITY_SHOPS_DATA[activeInteriorSpace.shopId].workScenarios;
-    return list[workScenarioIndex % list.length] || list[0] || null;
+    const shopId = activeInteriorSpace.shopId;
+    const list = CITY_SHOPS_DATA[shopId].workScenarios;
+    const history = sessionShopWorkCustomerHistoryRef.current[shopId] || [];
+    let unasked = list.filter((s) => !history.includes(s.id));
+    if (unasked.length === 0) {
+      unasked = list;
+      sessionShopWorkCustomerHistoryRef.current[shopId] = [];
+    }
+    const chosen = unasked[Math.floor(Math.random() * unasked.length)] || list[0];
+    sessionShopWorkCustomerHistoryRef.current[shopId] = [
+      ...(sessionShopWorkCustomerHistoryRef.current[shopId] || []),
+      chosen.id,
+    ];
+    return chosen;
   }, [activeInteriorSpace, workScenarioIndex]);
 
   // Xử lý bắt đầu hoặc dừng câu cá
@@ -1167,6 +1662,15 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
           if (nearbyNpcId) {
             e.preventDefault();
             setActiveStreetNpcId(nearbyNpcId);
+          } else if (isNearSchool) {
+            e.preventDefault();
+            handleEnterSchoolSpace();
+          } else if (isNearCinema) {
+            e.preventDefault();
+            handleEnterCinemaSpace();
+          } else if (isNearAmusementPark) {
+            e.preventDefault();
+            setIsAmusementTicketModalOpen(true);
           } else if (nearShopVenue) {
             e.preventDefault();
             handleEnterShopSpace(nearShopVenue);
@@ -1191,6 +1695,10 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
     interiorZone,
     isWorkingAsStaff,
     isHouseModalOpen,
+    isNearSchool,
+    handleEnterSchoolSpace,
+    isNearCinema,
+    handleEnterCinemaSpace,
     nearShopVenue,
     insidePlotCode,
     isNearPlayerHouse,
@@ -1310,11 +1818,11 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
       >
         <GroupsRoundedIcon sx={{ color: '#34d399', fontSize: 19 }} />
         <Typography variant="caption" sx={{ color: '#a7f3d0', fontWeight: 800, mr: 0.5 }}>
-          Đang Online ({onlinePlayersList.length + 1}):
+          🟢 Online ({onlinePlayersList.length + 1}):
         </Typography>
 
         <Chip
-          label={`🟢 Bạn (${ownerName})`}
+          label={`🏡 ${ownerName}`}
           size="small"
           onClick={() =>
             handleTeleport(
@@ -1324,7 +1832,7 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
             )
           }
           sx={{
-            height: 23,
+            height: 22,
             fontSize: '0.68rem',
             fontWeight: 800,
             cursor: 'pointer',
@@ -1335,75 +1843,69 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
           }}
         />
 
-        {onlinePlayersList.length === 0 ? (
-          <Typography variant="caption" sx={{ color: '#94a3b8', fontStyle: 'italic', ml: 0.5 }}>
-            Mở thêm tab/trình duyệt khác đăng nhập để gặp nhau & thăm nhà hàng xóm!
-          </Typography>
-        ) : (
-          onlinePlayersList.map((rp) => {
-            const rpPlot = getPlotByCode(rp.maLoDat);
-            return (
-              <Box
-                key={rp.id}
-                sx={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  px: 1,
-                  py: 0.2,
-                  borderRadius: 2,
-                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                  border: '1px solid rgba(16, 185, 129, 0.4)',
-                }}
-              >
-                <Typography variant="caption" sx={{ color: '#f8fafc', fontWeight: 800, fontSize: '0.7rem' }}>
-                  🟢 {rp.username}
-                </Typography>
-                <Tooltip title={`Dịch chuyển đến gặp trực tiếp ${rp.username}`}>
-                  <Chip
-                    icon={<PersonPinCircleRoundedIcon sx={{ fontSize: '13px !important', color: '#0f172a !important' }} />}
-                    label="Gặp ngay"
-                    size="small"
-                    onClick={() =>
-                      handleTeleport(`Vị trí của ${rp.username}`, rp.x + 1.5, rp.z + 1.5)
-                    }
-                    sx={{
-                      height: 19,
-                      fontSize: '0.65rem',
-                      fontWeight: 900,
-                      cursor: 'pointer',
-                      backgroundColor: '#34d399',
-                      color: '#0f172a',
-                      '&:hover': { backgroundColor: '#6ee7b7' },
-                    }}
-                  />
-                </Tooltip>
-                <Tooltip title={`Đến thăm Ngôi Nhà Cấp 4 của ${rp.username} (${rpPlot.tenLoDat})`}>
-                  <Chip
-                    label={`🏘️ Thăm nhà (${rpPlot.tenLoDat.split('•')[0].trim()})`}
-                    size="small"
-                    onClick={() =>
-                      handleTeleport(
-                        `🏘️ Nhà Cấp 4 của ${rp.username}`,
-                        rpPlot.spawnPosition[0],
-                        rpPlot.spawnPosition[2]
-                      )
-                    }
-                    sx={{
-                      height: 19,
-                      fontSize: '0.65rem',
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      backgroundColor: 'rgba(56, 189, 248, 0.25)',
-                      color: '#bae6fd',
-                      '&:hover': { backgroundColor: 'rgba(56, 189, 248, 0.45)' },
-                    }}
-                  />
-                </Tooltip>
-              </Box>
-            );
-          })
-        )}
+        {onlinePlayersList.map((rp) => {
+          const rpPlot = getPlotByCode(rp.maLoDat);
+          return (
+            <Box
+              key={rp.id}
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.5,
+                px: 0.8,
+                py: 0.2,
+                borderRadius: 2,
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+              }}
+            >
+              <Typography variant="caption" sx={{ color: '#f8fafc', fontWeight: 800, fontSize: '0.7rem' }}>
+                🟢 {rp.username}
+              </Typography>
+              <Tooltip title={`Dịch chuyển đến ${rp.username}`}>
+                <Chip
+                  icon={<PersonPinCircleRoundedIcon sx={{ fontSize: '13px !important', color: '#0f172a !important' }} />}
+                  label="Gặp"
+                  size="small"
+                  onClick={() =>
+                    handleTeleport(`Vị trí của ${rp.username}`, rp.x + 1.5, rp.z + 1.5)
+                  }
+                  sx={{
+                    height: 19,
+                    fontSize: '0.65rem',
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    backgroundColor: '#34d399',
+                    color: '#0f172a',
+                    '&:hover': { backgroundColor: '#6ee7b7' },
+                  }}
+                />
+              </Tooltip>
+              <Tooltip title={`Thăm nhà ${rp.username}`}>
+                <Chip
+                  label="🏘️ Nhà"
+                  size="small"
+                  onClick={() =>
+                    handleTeleport(
+                      `🏘️ Nhà của ${rp.username}`,
+                      rpPlot.spawnPosition[0],
+                      rpPlot.spawnPosition[2]
+                    )
+                  }
+                  sx={{
+                    height: 19,
+                    fontSize: '0.65rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    backgroundColor: 'rgba(56, 189, 248, 0.25)',
+                    color: '#bae6fd',
+                    '&:hover': { backgroundColor: 'rgba(56, 189, 248, 0.45)' },
+                  }}
+                />
+              </Tooltip>
+            </Box>
+          );
+        })}
       </Box>
 
       {/* ================================================================= */}
@@ -1416,62 +1918,60 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
             top: 60,
             left: 14,
             zIndex: 28,
-            display: 'flex',
+            display:
+              activeInteriorSpace.kind === 'SCHOOL' ||
+              activeInteriorSpace.kind === 'CINEMA'
+                ? 'none'
+                : 'flex',
             alignItems: 'center',
             flexWrap: 'wrap',
-            gap: 1.2,
-            p: '8px 16px',
-            borderRadius: 3.5,
+            gap: 1,
+            p: '6px 14px',
+            borderRadius: 999,
             background:
               activeInteriorSpace.kind === 'HOUSE'
-                ? 'linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(180, 83, 9, 0.92))'
-                : 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 58, 138, 0.92))',
-            border: '2px solid #fbbf24',
-            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.6)',
+                ? 'linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(180, 83, 9, 0.88))'
+                : 'linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 58, 138, 0.88))',
+            border: '1.5px solid #fbbf24',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(10px)',
           }}
         >
-          <HomeWorkRoundedIcon sx={{ color: '#fef08a', fontSize: 20 }} />
-          <Typography variant="body2" sx={{ color: '#ffffff', fontWeight: 900 }}>
+          <HomeWorkRoundedIcon sx={{ color: '#fef08a', fontSize: 18 }} />
+          <Typography variant="body2" sx={{ color: '#ffffff', fontWeight: 900, fontSize: '0.82rem' }}>
             {activeInteriorSpace.kind === 'HOUSE'
-              ? `🏠 Không Gian Trong Nhà: ${activeInteriorSpace.houseTitle} (${activeInteriorSpace.plotLabel})`
-              : `${CITY_SHOPS_DATA[activeInteriorSpace.shopId].title} • Không Gian Trong Quán`}
+              ? `🏠 ${activeInteriorSpace.houseTitle}`
+              : activeInteriorSpace.kind === 'SCHOOL'
+                ? '🏫 Lớp Học Cô Lan'
+                : activeInteriorSpace.kind === 'CINEMA'
+                  ? '🎬 Rạp Chiếu Phim IMAX'
+                  : `${CITY_SHOPS_DATA[activeInteriorSpace.shopId].title}`}
           </Typography>
 
-          {/* KHI ĐANG Ở BÊN TRONG NHÀ CỦA MÌNH: HIỆN ICON NHỎ ĐỂ MUA NỘI THẤT BẰNG XU & TỰ DO TRANG TRÍ */}
+          {/* KHI ĐANG Ở BÊN TRONG NHÀ CỦA MÌNH */}
           {activeInteriorSpace.kind === 'HOUSE' && activeInteriorSpace.isMyHouse && (
             <>
               <Button
                 size="small"
                 variant="contained"
-                startIcon={<PaletteRoundedIcon sx={{ fontSize: 16 }} />}
+                startIcon={<PaletteRoundedIcon sx={{ fontSize: 15 }} />}
                 onClick={() => setIsHouseModalOpen(true)}
                 sx={{
-                  height: 28,
-                  fontSize: '0.74rem',
+                  height: 26,
+                  fontSize: '0.72rem',
                   fontWeight: 900,
                   textTransform: 'none',
                   borderRadius: 999,
                   background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
                   color: '#0f172a',
-                  boxShadow: '0 4px 14px rgba(245, 158, 11, 0.5)',
                   '&:hover': { background: '#fde047' },
                 }}
               >
-                🛋️ Mua Nội Thất Bằng Xu & Trang Trí ({houseFurnitureList.length})
+                🛋️ Nội thất ({houseFurnitureList.length})
               </Button>
 
               {selectedFurnitureIndex !== null && houseFurnitureList[selectedFurnitureIndex] && (
-                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.8 }}>
-                  <Chip
-                    label="💡 Click sàn phòng 3D để đổi vị trí"
-                    size="small"
-                    sx={{
-                      backgroundColor: 'rgba(56, 189, 248, 0.25)',
-                      color: '#bae6fd',
-                      fontWeight: 800,
-                      fontSize: '0.68rem',
-                    }}
-                  />
+                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6 }}>
                   <Button
                     size="small"
                     variant="contained"
@@ -1484,10 +1984,11 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
                       handleUpdateFurnitureList(next);
                     }}
                     sx={{
-                      height: 25,
+                      height: 24,
                       fontSize: '0.68rem',
                       fontWeight: 900,
                       textTransform: 'none',
+                      borderRadius: 999,
                       backgroundColor: '#38bdf8',
                       color: '#0f172a',
                     }}
@@ -1503,22 +2004,23 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
                       handleUpdateFurnitureList(next);
                     }}
                     sx={{
-                      height: 25,
+                      height: 24,
                       fontSize: '0.68rem',
                       fontWeight: 900,
                       textTransform: 'none',
+                      borderRadius: 999,
                       backgroundColor: '#ef4444',
                       color: '#ffffff',
                     }}
                   >
-                    🗑️ Cất món này
+                    🗑️ Cất
                   </Button>
                 </Box>
               )}
             </>
           )}
 
-          {/* KHI ĐANG Ở BÊN TRONG 4 QUÁN: MẶC ĐỊNH LÀ KHÁCH MUA HÀNG, NẾU MUỐN LÀM NHÂN VIÊN THÌ CHỌN */}
+          {/* KHI ĐANG Ở BÊN TRONG 4 QUÁN */}
           {activeInteriorSpace.kind === 'SHOP' && (
             <>
               <Button
@@ -1529,17 +2031,17 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
                   setActiveShopModal(activeInteriorSpace.shopId);
                 }}
                 sx={{
-                  height: 27,
+                  height: 26,
                   fontSize: '0.72rem',
                   fontWeight: 900,
                   textTransform: 'none',
-                  borderRadius: 2,
+                  borderRadius: 999,
                   backgroundColor: interiorZone === 'BUY' ? '#38bdf8' : 'rgba(56, 189, 248, 0.25)',
                   color: interiorZone === 'BUY' ? '#0f172a' : '#e0f2fe',
                   border: '1px solid #38bdf8',
                 }}
               >
-                🛒 Mua Sắm Hàng Hóa {interiorZone === 'BUY' ? '[Đang đứng gần - Bấm E]' : ''}
+                🛒 Mua Sắm {interiorZone === 'BUY' ? '[E]' : ''}
               </Button>
 
               {isWorkingAsStaff ? (
@@ -1552,37 +2054,36 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
                       setActiveShopModal(activeInteriorSpace.shopId);
                     }}
                     sx={{
-                      height: 27,
+                      height: 26,
                       fontSize: '0.72rem',
                       fontWeight: 900,
                       textTransform: 'none',
-                      borderRadius: 2,
+                      borderRadius: 999,
                       backgroundColor: '#fbbf24',
                       color: '#0f172a',
-                      border: '1px solid #fbbf24',
                     }}
                   >
-                    👨‍🍳 Tiếp Khách Hàng NPC {interiorZone === 'WORK' ? '[Bấm E]' : ''}
+                    👨‍🍳 Tiếp Khách {interiorZone === 'WORK' ? '[E]' : ''}
                   </Button>
                   <Button
                     size="small"
                     variant="outlined"
                     onClick={() => {
                       setIsWorkingAsStaff(false);
-                      setToastMessage('🛒 Bạn đã nghỉ ca làm và trở lại làm khách mua hàng bình thường.');
+                      setToastMessage('🛒 Đã nghỉ ca làm.');
                     }}
                     sx={{
-                      height: 27,
+                      height: 26,
                       fontSize: '0.72rem',
                       fontWeight: 900,
                       textTransform: 'none',
-                      borderRadius: 2,
+                      borderRadius: 999,
                       borderColor: '#f87171',
                       color: '#fca5a5',
                       backgroundColor: 'rgba(239, 68, 68, 0.16)',
                     }}
                   >
-                    🛑 Nghỉ làm (Trở lại làm khách)
+                    🛑 Nghỉ ca
                   </Button>
                 </>
               ) : (
@@ -1592,21 +2093,21 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
                   onClick={() => {
                     setIsWorkingAsStaff(true);
                     setToastMessage(
-                      `👨‍🍳 Bạn đã bắt đầu ca làm ${CITY_SHOPS_DATA[activeInteriorSpace.shopId].jobTitle}! Khách NPC sẽ bước vào quầy bên phải.`
+                      `👨‍🍳 Bắt đầu ca làm ${CITY_SHOPS_DATA[activeInteriorSpace.shopId].jobTitle}!`
                     );
                   }}
                   sx={{
-                    height: 27,
+                    height: 26,
                     fontSize: '0.72rem',
                     fontWeight: 900,
                     textTransform: 'none',
-                    borderRadius: 2,
+                    borderRadius: 999,
                     borderColor: '#fbbf24',
                     color: '#fef08a',
                     backgroundColor: 'rgba(251, 191, 36, 0.14)',
                   }}
                 >
-                  💼 Xin làm nhân viên ca này
+                  💼 Làm nhân viên
                 </Button>
               )}
             </>
@@ -1617,22 +2118,22 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
             variant="outlined"
             onClick={handleExitInteriorSpace}
             sx={{
-              height: 27,
+              height: 26,
               fontSize: '0.72rem',
               fontWeight: 900,
               textTransform: 'none',
-              borderRadius: 2,
+              borderRadius: 999,
               borderColor: '#34d399',
               color: '#a7f3d0',
               '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.2)' },
             }}
           >
-            🚪 Bước Ra Ngoài Thành Phố
+            🚪 Ra ngoài
           </Button>
         </Box>
       ) : (
         <>
-          {/* KHI ĐANG ĐỨNG TRƯỚC CỬA 1 TRONG 4 QUÁN NGOÀI ĐƯỜNG: BƯỚC VÀO CỬA ĐỂ ĐI VÀO KHÔNG GIAN QUÁN */}
+          {/* KHI ĐANG ĐỨNG TRƯỚC CỬA 1 TRONG 4 QUÁN NGOÀI ĐƯỜNG */}
           {nearShopVenue && !isFishing && (
             <Box
               sx={{
@@ -1643,15 +2144,16 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
                 zIndex: 28,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 1.5,
-                p: '8px 18px',
-                borderRadius: 4,
-                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(30, 41, 59, 0.94))',
-                border: '2px solid #fbbf24',
-                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.6)',
+                gap: 1.2,
+                p: '6px 14px',
+                borderRadius: 999,
+                background: 'rgba(15, 23, 42, 0.92)',
+                border: '1.5px solid #fbbf24',
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
+                backdropFilter: 'blur(8px)',
               }}
             >
-              <Typography variant="body2" sx={{ color: '#fef08a', fontWeight: 900 }}>
+              <Typography variant="body2" sx={{ color: '#fef08a', fontWeight: 900, fontSize: '0.82rem' }}>
                 {CITY_SHOPS_DATA[nearShopVenue].title}
               </Typography>
               <Button
@@ -1662,13 +2164,100 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
                   backgroundColor: '#fbbf24',
                   color: '#0f172a',
                   fontWeight: 900,
-                  fontSize: '0.75rem',
+                  fontSize: '0.74rem',
                   textTransform: 'none',
-                  borderRadius: 2,
+                  borderRadius: 999,
+                  height: 26,
                   '&:hover': { backgroundColor: '#fde047' },
                 }}
               >
-                🚪 Bước Vào Không Gian Quán [Đi vào cửa / Phím E]
+                🚪 Vào quán [E]
+              </Button>
+            </Box>
+          )}
+
+          {/* KHI ĐANG ĐỨNG TRƯỚC SẢNH TRƯỜNG HỌC QUỐC TẾ NGOÀI ĐƯỜNG */}
+          {isNearSchool && !activeInteriorSpace && !isFishing && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 62,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 28,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.2,
+                p: '6px 14px',
+                borderRadius: 999,
+                background: 'rgba(153, 27, 27, 0.92)',
+                border: '1.5px solid #fef08a',
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              <Typography variant="body2" sx={{ color: '#ffffff', fontWeight: 900, fontSize: '0.82rem' }}>
+                🏫 Trường Học Quốc Tế
+              </Typography>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleEnterSchoolSpace}
+                sx={{
+                  backgroundColor: '#fef08a',
+                  color: '#991b1b',
+                  fontWeight: 900,
+                  fontSize: '0.74rem',
+                  textTransform: 'none',
+                  borderRadius: 999,
+                  height: 26,
+                  '&:hover': { backgroundColor: '#fef9c3' },
+                }}
+              >
+                🚪 Vào lớp [E]
+              </Button>
+            </Box>
+          )}
+
+          {/* KHI ĐANG ĐỨNG TRƯỚC RẠP CHIẾU PHIM GRAND IMAX NGOÀI ĐƯỜNG */}
+          {isNearCinema && !activeInteriorSpace && !isFishing && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 62,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 28,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.2,
+                p: '6px 14px',
+                borderRadius: 999,
+                background: 'rgba(15, 23, 42, 0.94)',
+                border: '1.5px solid #f43f5e',
+                boxShadow: '0 8px 24px rgba(244, 63, 94, 0.45)',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              <Typography variant="body2" sx={{ color: '#fef08a', fontWeight: 900, fontSize: '0.82rem' }}>
+                🎬 Rạp Chiếu Phim IMAX
+              </Typography>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleEnterCinemaSpace}
+                sx={{
+                  backgroundColor: '#e11d48',
+                  color: '#ffffff',
+                  fontWeight: 900,
+                  fontSize: '0.74rem',
+                  textTransform: 'none',
+                  borderRadius: 999,
+                  height: 26,
+                  '&:hover': { backgroundColor: '#be123c' },
+                }}
+              >
+                🍿 Vào Rạp Xem Phim [E]
               </Button>
             </Box>
           )}
@@ -1682,37 +2271,40 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
         <Box
           sx={{
             position: 'absolute',
-            top: 108,
+            top: 62,
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 25,
             display: 'flex',
             alignItems: 'center',
-            gap: 2,
-            p: '10px 20px',
-            borderRadius: 4,
-            background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.95), rgba(14, 165, 233, 0.95))',
-            boxShadow: '0 8px 30px rgba(2, 132, 199, 0.45)',
-            border: '2px solid rgba(255, 255, 255, 0.3)',
+            gap: 1.2,
+            p: '6px 14px',
+            borderRadius: 999,
+            background: 'rgba(2, 132, 199, 0.92)',
+            boxShadow: '0 8px 24px rgba(2, 132, 199, 0.4)',
+            border: '1.5px solid rgba(255, 255, 255, 0.35)',
+            backdropFilter: 'blur(8px)',
           }}
         >
-          <Typography variant="body2" sx={{ color: '#ffffff', fontWeight: 800 }}>
-            🎣 Bạn đang ở Bến Câu Cá! Bấm [F] hoặc nhấn nút để thả cần câu
+          <Typography variant="body2" sx={{ color: '#ffffff', fontWeight: 900, fontSize: '0.82rem' }}>
+            🎣 Bến Câu Cá
           </Typography>
           <Button
             variant="contained"
             size="small"
             onClick={toggleFishing}
             sx={{
-              backgroundColor: '#f59e0b',
-              color: '#ffffff',
-              fontWeight: 800,
-              fontSize: '0.78rem',
-              borderRadius: 2,
-              '&:hover': { backgroundColor: '#d97706' },
+              backgroundColor: '#fbbf24',
+              color: '#0f172a',
+              fontWeight: 900,
+              fontSize: '0.74rem',
+              textTransform: 'none',
+              borderRadius: 999,
+              height: 26,
+              '&:hover': { backgroundColor: '#fde047' },
             }}
           >
-            Bắt đầu câu
+            Thả câu [F]
           </Button>
         </Box>
       )}
@@ -1814,6 +2406,20 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
         }}
       >
+        <Tooltip title="Phối Đồ Thời Trang (Mix & Match) & Gara Siêu Xe" placement="left">
+          <IconButton
+            onClick={() => setIsWardrobeOpen(true)}
+            sx={{
+              background: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
+              color: '#ffffff',
+              border: '1px solid rgba(251, 207, 232, 0.5)',
+              '&:hover': { background: 'linear-gradient(135deg, #db2777, #7c3aed)' },
+            }}
+          >
+            <CheckroomRoundedIcon />
+          </IconButton>
+        </Tooltip>
+
         <Tooltip
           title={
             activeInteriorSpace?.kind === 'HOUSE' && activeInteriorSpace.isMyHouse
@@ -1976,7 +2582,13 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
           <OrthographicCamera
             makeDefault
             position={[22, 22, 22]}
-            zoom={activeInteriorSpace ? Math.max(22, cameraZoom) : cameraZoom}
+            zoom={
+              isSchoolInteriorActive || isCinemaInteriorActive
+                ? Math.max(30, cameraZoom)
+                : activeInteriorSpace
+                  ? Math.max(22, cameraZoom)
+                  : cameraZoom
+            }
             near={-150}
             far={600}
           />
@@ -2026,12 +2638,25 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
                 onInteriorZoneChange={setInteriorZone}
                 outfitColor={outfitColor}
                 hatColor={hatColor}
+                pantsColor={pantsColor}
+                shoeColor={shoeColor}
+                hairColor={hairColor}
+                avatarStyle={avatarStyle}
+                hatStyle={hatStyle}
+                accessory={accessory}
                 currentEmote={currentEmote}
                 teleportTarget={teleportTarget}
                 cameraOrbitAngle={cameraOrbitAngle}
+                classroomQuizState={classroomQuizState}
+                isCinemaLightsDimmed={isCinemaLightsDimmed}
+                hasCinemaTicket={hasCinemaTicket}
+                onOpenCinemaTicketBox={() =>
+                  handleBuyCinemaTicket(50, 30, 'Vé Xem Phim IMAX 2D/3D')
+                }
               />
             ) : (
               <PlayTogetherCityScene
+                key="playtogether-city-scene"
                 cameraOrbitAngle={cameraOrbitAngle}
                 onInteractNPC={(npcId) => {
                   setActiveStreetNpcId(npcId);
@@ -2039,8 +2664,15 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
                 isFishing={isFishing}
                 isSkateboarding={isSkateboarding}
                 activeVehicle={activeVehicle}
+                vehicleColor={vehicleColor}
                 outfitColor={outfitColor}
                 hatColor={hatColor}
+                pantsColor={pantsColor}
+                shoeColor={shoeColor}
+                hairColor={hairColor}
+                avatarStyle={avatarStyle}
+                hatStyle={hatStyle}
+                accessory={accessory}
                 currentEmote={currentEmote}
                 teleportTarget={teleportTarget}
                 onNearFishingPier={setIsNearFishingPier}
@@ -2053,11 +2685,20 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
                 onOpenShopModal={(shopId) => handleEnterShopSpace(shopId)}
                 onStepHouseDoor={handleEnterHouseSpace}
                 onStepShopDoor={handleEnterShopSpace}
+                onStepSchoolDoor={handleEnterSchoolSpace}
+                onNearSchoolBuilding={setIsNearSchool}
+                onStepCinemaDoor={handleEnterCinemaSpace}
+                onNearCinemaBuilding={setIsNearCinema}
+                activeAmusementRide={activeAmusementRide}
+                onNearAmusementPark={setIsNearAmusementPark}
+                onSelectAmusementRide={handleSelectRideFrom3D}
+                onOpenAmusementParkMenu={() => setIsAmusementTicketModalOpen(true)}
                 myPlot={myPlot}
                 ownerName={ownerName}
                 houseTitle={houseTitle}
                 houseWallColor={houseWallColor}
                 houseRoofColor={houseRoofColor}
+                houseStyle={houseStyle}
                 houseFurnitureList={houseFurnitureList}
                 insidePlotCode={insidePlotCode}
                 forceCutawayRoof={isInsidePlayerHouse || forceCutawayRoof}
@@ -2081,11 +2722,13 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
         houseTitle={houseTitle}
         houseWallColor={houseWallColor}
         houseRoofColor={houseRoofColor}
+        houseStyle={houseStyle}
         myPlotLabel={myPlot.tenLoDat}
         onClose={() => setIsHouseModalOpen(false)}
         onBuyFurniture={handleBuyFurniture}
         onUpdateFurnitureList={handleUpdateFurnitureList}
         onUpdateExterior={handleUpdateExterior}
+        onUpgradeHouseModel={handleUpgradeHouseModel}
       />
 
       {/* ================================================================= */}
@@ -2121,20 +2764,67 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
         activeVehicle={activeVehicle}
         onClose={() => setActiveShopModal(null)}
         onBuyShopItem={handleBuyShopItem}
-        onEquipOutfit={(nextOutfit, nextHat, name) => {
-          setOutfitColor(nextOutfit);
-          setHatColor(nextHat);
-          setToastMessage(`👕 Đã mặc trang phục "${name}"!`);
+        onEquipOutfit={(item) => {
+          if (item.outfitColor) setOutfitColor(item.outfitColor);
+          if (item.hatColor) setHatColor(item.hatColor);
+          if (item.pantsColor) setPantsColor(item.pantsColor);
+          if (item.shoeColor) setShoeColor(item.shoeColor);
+          if (item.avatarStyle) setAvatarStyle(item.avatarStyle);
+          if (item.hatStyle) setHatStyle(item.hatStyle);
+          if (item.accessory) setAccessory(item.accessory);
+          setToastMessage(`👕 Đã mặc trang phục "${item.name}"!`);
         }}
-        onEquipVehicle={(vType, name) => {
+        onEquipVehicle={(vType, vColor, name) => {
           setActiveVehicle(vType);
+          if (vColor) setVehicleColor(vColor);
           setIsSkateboarding(vType === 'skateboard');
           setToastMessage(
             vType === 'none' ? '🚶 Đã xuống xe.' : `🔑 Đang lái "${name}" tốc độ cao!`
           );
         }}
+        onOpenWardrobe={() => setIsWardrobeOpen(true)}
         onCompleteWorkScenario={handleCompleteWorkScenario}
         onFailWorkScenario={handleFailWorkScenario}
+      />
+
+      {/* ================================================================= */}
+      {/* 6E. STUDIO TỰ PHỐI ĐỒ THỜI TRANG & GARA ĐỘ XE (MIX & MATCH)       */}
+      {/* ================================================================= */}
+      <WardrobeMixMatchModal
+        isOpen={isWardrobeOpen}
+        ownedItemCodes={ownedItemCodes}
+        state={{
+          avatarStyle,
+          outfitColor,
+          hatColor,
+          pantsColor,
+          shoeColor,
+          hairColor,
+          hatStyle,
+          accessory,
+          activeVehicle,
+          vehicleColor,
+        }}
+        onChange={(patch) => {
+          if (patch.avatarStyle !== undefined) setAvatarStyle(patch.avatarStyle);
+          if (patch.outfitColor !== undefined) setOutfitColor(patch.outfitColor);
+          if (patch.hatColor !== undefined) setHatColor(patch.hatColor);
+          if (patch.pantsColor !== undefined) setPantsColor(patch.pantsColor);
+          if (patch.shoeColor !== undefined) setShoeColor(patch.shoeColor);
+          if (patch.hairColor !== undefined) setHairColor(patch.hairColor);
+          if (patch.hatStyle !== undefined) setHatStyle(patch.hatStyle);
+          if (patch.accessory !== undefined) setAccessory(patch.accessory);
+          if (patch.activeVehicle !== undefined) {
+            setActiveVehicle(patch.activeVehicle);
+            setIsSkateboarding(patch.activeVehicle === 'skateboard');
+          }
+          if (patch.vehicleColor !== undefined) setVehicleColor(patch.vehicleColor);
+        }}
+        onOpenShop={(shopId) => {
+          setIsWardrobeOpen(false);
+          setActiveShopModal(shopId);
+        }}
+        onClose={() => setIsWardrobeOpen(false)}
       />
 
       {/* ================================================================= */}
@@ -2297,7 +2987,7 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
           backgroundColor: 'rgba(15, 23, 42, 0.88)',
           backdropFilter: 'blur(24px)',
           border: '1px solid rgba(255, 255, 255, 0.15)',
-          display: 'flex',
+          display: isSchoolInteriorActive || isCinemaInteriorActive ? 'none' : 'flex',
           alignItems: 'center',
           gap: 2.5,
           minWidth: { xs: 300, sm: 400 },
@@ -2339,6 +3029,60 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
           />
         </Box>
       </Paper>
+
+      {/* HUD ĐẤU TRÍ TRỰC TIẾP LỚP HỌC TRỰC TUYẾN • CÔ LAN */}
+      {isSchoolInteriorActive && (
+        <ClassroomLiveHud
+          quizState={classroomQuizState}
+          onExit={handleExitInteriorSpace}
+        />
+      )}
+
+      {/* HUD RẠP CHIẾU PHIM GRAND IMAX YOUTUBE */}
+      {isCinemaInteriorActive && (
+        <CinemaLiveHud
+          playerCoins={effectivePlayerCoins}
+          hasTicket={hasCinemaTicket}
+          activeMovie={activeCinemaMovie}
+          customYoutubeUrl={customYoutubeUrl}
+          isLightsDimmed={isCinemaLightsDimmed}
+          isScreenExpanded={isCinemaScreenExpanded}
+          onSelectMovie={(movie) => {
+            if (!hasCinemaTicket) {
+              setToastMessage(
+                '🎟️ Hãy mua Vé Xem Phim (50 Xu) trước khi chọn chiếu bộ phim này nhé!'
+              );
+              return;
+            }
+            setActiveCinemaMovie(movie);
+            setToastMessage(`🎬 Đang chiếu bộ phim: ${movie.title}`);
+          }}
+          onCustomUrlChange={setCustomYoutubeUrl}
+          onApplyCustomYoutubeUrl={handleApplyCustomYoutubeUrl}
+          onBuyTicket={handleBuyCinemaTicket}
+          onToggleLights={() => setIsCinemaLightsDimmed((prev) => !prev)}
+          onToggleExpandScreen={() =>
+            setIsCinemaScreenExpanded((prev) => !prev)
+          }
+          onExit={handleExitInteriorSpace}
+        />
+      )}
+
+      {/* HUD & QUẦY MUA VÉ KHU VUI CHƠI GIẢI TRÍ 3D (WONDERLAND & SMILE PARK) */}
+      {!activeInteriorSpace && (
+        <AmusementParkHud
+          isNearPark={isNearAmusementPark}
+          activeRideId={activeAmusementRide}
+          rideTimeLeft={rideTimeLeft}
+          playerCoins={effectivePlayerCoins}
+          isTicketModalOpen={isAmusementTicketModalOpen}
+          onOpenTicketModal={() => setIsAmusementTicketModalOpen(true)}
+          onCloseTicketModal={() => setIsAmusementTicketModalOpen(false)}
+          onPurchaseAndStartRide={handlePurchaseAndStartRide}
+          onStopRideEarly={handleStopAmusementRide}
+          onRewardCarnivalQuiz={handleRewardCarnivalQuiz}
+        />
+      )}
 
       <ChatHUD />
     </Box>

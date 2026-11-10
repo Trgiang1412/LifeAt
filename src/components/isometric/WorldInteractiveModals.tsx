@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -28,18 +28,32 @@ import RotateRightRoundedIcon from '@mui/icons-material/RotateRightRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
+import HomeWorkRoundedIcon from '@mui/icons-material/HomeWorkRounded';
 import {
   FURNITURE_CATALOG,
+  MODERN_HOUSE_MODELS,
   FISHING_ENGLISH_QUESTIONS,
   CITY_SHOPS_DATA,
   ENGLISH_SOURCE_BOOK,
   STREET_NPCS_DIALOGUE_DATA,
+  ENGLISH_DATABASE_SOURCES,
+  convertMultiSourceItemToNpcScenario,
+  markQuestionAsAsked,
+  type EnglishDatabaseSourceId,
+  type MultiSourceEnglishItem,
   type FurnitureCatalogItem,
+  type ModernHouseModelItem,
+  type ModernHouseStyleId,
   type EnglishChallengeQuestion,
   type ShopVenueId,
   type ShopProductItem,
   type WorkCustomerScenario,
   type StreetNpcScenario,
+  type StreetNpcProfile,
+  type AvatarTopStyle,
+  type AvatarHatStyle,
+  type AvatarAccessoryStyle,
+  type WorldVehicleType,
 } from '@/data/worldGameplayData';
 import type { HouseFurnitureRenderItem } from './PlayTogetherPlaza';
 
@@ -55,6 +69,9 @@ interface FishingQuizModalProps {
   onCancel: () => void;
 }
 
+// Bộ nhớ lưu lịch sử các câu hỏi câu cá đã trả lời để đảm bảo random KHÔNG TRÙNG LẶP
+const sessionFishingHistory: string[] = [];
+
 export function FishingQuizModal({
   isOpen,
   pendingFish,
@@ -64,7 +81,9 @@ export function FishingQuizModal({
   const [questionTypeFilter, setQuestionTypeFilter] = useState<
     'all' | 'multiple_choice' | 'essay_fill' | 'knowledge'
   >('all');
-  const [questionIndex, setQuestionIndex] = useState<number>(0);
+  const [currentQuestion, setCurrentQuestion] = useState<EnglishChallengeQuestion>(
+    FISHING_ENGLISH_QUESTIONS[0]
+  );
   const [selectedOption, setSelectedOption] = useState<string>('');
   const [essayAnswer, setEssayAnswer] = useState<string>('');
   const [feedback, setFeedback] = useState<{
@@ -72,23 +91,33 @@ export function FishingQuizModal({
     message: string;
   } | null>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      setQuestionIndex(Math.floor(Math.random() * FISHING_ENGLISH_QUESTIONS.length));
+  const pickNextFishingQuestion = useCallback(
+    (filter: 'all' | 'multiple_choice' | 'essay_fill' | 'knowledge') => {
+      const candidates =
+        filter === 'all'
+          ? FISHING_ENGLISH_QUESTIONS
+          : FISHING_ENGLISH_QUESTIONS.filter((q) => q.questionType === filter);
+
+      let unasked = candidates.filter((q) => !sessionFishingHistory.includes(q.id));
+      if (unasked.length === 0) {
+        unasked = candidates;
+        sessionFishingHistory.length = 0;
+      }
+      const chosen = unasked[Math.floor(Math.random() * unasked.length)] || candidates[0];
+      sessionFishingHistory.push(chosen.id);
+      setCurrentQuestion(chosen);
       setSelectedOption('');
       setEssayAnswer('');
       setFeedback(null);
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      pickNextFishingQuestion(questionTypeFilter);
     }
-  }, [isOpen]);
-
-  const filteredQuestions = useMemo(() => {
-    if (questionTypeFilter === 'all') return FISHING_ENGLISH_QUESTIONS;
-    return FISHING_ENGLISH_QUESTIONS.filter((q) => q.questionType === questionTypeFilter);
-  }, [questionTypeFilter]);
-
-  const currentQuestion =
-    filteredQuestions[questionIndex % Math.max(1, filteredQuestions.length)] ||
-    FISHING_ENGLISH_QUESTIONS[0];
+  }, [isOpen, questionTypeFilter, pickNextFishingQuestion]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,10 +209,7 @@ export function FishingQuizModal({
               clickable
               onClick={() => {
                 setQuestionTypeFilter(tab.id as any);
-                setQuestionIndex((i) => i + 1);
-                setSelectedOption('');
-                setEssayAnswer('');
-                setFeedback(null);
+                pickNextFishingQuestion(tab.id as any);
               }}
               sx={{
                 fontWeight: 800,
@@ -333,10 +359,7 @@ export function FishingQuizModal({
               <Button
                 variant={feedback && !feedback.isCorrect ? 'contained' : 'outlined'}
                 onClick={() => {
-                  setQuestionIndex((i) => i + 1);
-                  setSelectedOption('');
-                  setEssayAnswer('');
-                  setFeedback(null);
+                  pickNextFishingQuestion(questionTypeFilter);
                 }}
                 sx={{
                   textTransform: 'none',
@@ -388,11 +411,13 @@ interface HouseFurnitureModalProps {
   houseTitle: string;
   houseWallColor: string;
   houseRoofColor: string;
+  houseStyle?: ModernHouseStyleId;
   myPlotLabel: string;
   onClose: () => void;
   onBuyFurniture: (item: FurnitureCatalogItem) => Promise<void>;
   onUpdateFurnitureList: (newList: HouseFurnitureRenderItem[]) => Promise<void>;
   onUpdateExterior: (nextTitle: string, nextWall: string, nextRoof: string) => Promise<void>;
+  onUpgradeHouseModel?: (model: ModernHouseModelItem) => Promise<void>;
 }
 
 export function HouseFurnitureModal({
@@ -402,13 +427,15 @@ export function HouseFurnitureModal({
   houseTitle,
   houseWallColor,
   houseRoofColor,
+  houseStyle = 'traditional',
   myPlotLabel,
   onClose,
   onBuyFurniture,
   onUpdateFurnitureList,
   onUpdateExterior,
+  onUpgradeHouseModel,
 }: HouseFurnitureModalProps) {
-  const [activeTab, setActiveTab] = useState<'shop' | 'decorate' | 'exterior'>('shop');
+  const [activeTab, setActiveTab] = useState<'models' | 'shop' | 'decorate' | 'exterior'>('models');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [titleInput, setTitleInput] = useState<string>(houseTitle);
@@ -510,6 +537,8 @@ export function HouseFurnitureModal({
           onChange={(_, val) => setActiveTab(val)}
           textColor="inherit"
           indicatorColor="primary"
+          variant="scrollable"
+          scrollButtons="auto"
           sx={{
             '& .MuiTab-root': {
               textTransform: 'none',
@@ -519,6 +548,12 @@ export function HouseFurnitureModal({
             },
           }}
         >
+          <Tab
+            value="models"
+            icon={<HomeWorkRoundedIcon fontSize="small" />}
+            iconPosition="start"
+            label={`🏡 Mẫu Nhà Hiện Đại (${MODERN_HOUSE_MODELS.length} mẫu)`}
+          />
           <Tab
             value="shop"
             icon={<ChairRoundedIcon fontSize="small" />}
@@ -541,6 +576,199 @@ export function HouseFurnitureModal({
       </Box>
 
       <DialogContent sx={{ pt: 2.5, maxHeight: '72vh' }}>
+        {/* TAB 0: CÁC MẪU NHÀ HIỆN ĐẠI (KIẾN TRÚC TỪ PHỔ THÔNG ĐẾN SIÊU SANG) */}
+        {activeTab === 'models' && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 3,
+                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.05) 100%)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 1.5,
+              }}
+            >
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 900, color: '#fbbf24' }}>
+                  🏡 Nâng Cấp Kiến Trúc Nhà Ở Hiện Đại
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#cbd5e1' }}>
+                  Lựa chọn mẫu biệt thự theo phong cách yêu thích của bạn. Kiến trúc 3D ngoài lô đất sẽ tự động biến đổi hoàn toàn!
+                </Typography>
+              </Box>
+              <Chip
+                label={`Đang áp dụng: ${
+                  MODERN_HOUSE_MODELS.find((m) => m.styleId === houseStyle)?.name || 'Nhà Cấp 4 Mặc Định'
+                }`}
+                sx={{
+                  fontWeight: 800,
+                  backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                  color: '#6ee7b7',
+                  border: '1px solid #10b981',
+                }}
+              />
+            </Box>
+
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+                gap: 2.5,
+              }}
+            >
+              {MODERN_HOUSE_MODELS.map((model) => {
+                const isCurrent = (houseStyle || 'traditional') === model.styleId;
+                const canAfford = userCoins >= model.priceCoins;
+                const isFree = model.priceCoins === 0;
+
+                return (
+                  <Paper
+                    key={model.id}
+                    sx={{
+                      p: 2.5,
+                      borderRadius: 3,
+                      backgroundColor: isCurrent
+                        ? 'rgba(16, 185, 129, 0.12)'
+                        : 'rgba(15, 23, 42, 0.85)',
+                      border: isCurrent
+                        ? '2px solid #10b981'
+                        : '1px solid rgba(255, 255, 255, 0.12)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      gap: 2,
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        borderColor: isCurrent ? '#10b981' : '#f59e0b',
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 12px 28px rgba(0,0,0,0.4)',
+                      },
+                    }}
+                  >
+                    <Box>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          mb: 1,
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography sx={{ fontSize: '1.8rem' }}>{model.icon}</Typography>
+                          <Box>
+                            <Typography variant="h6" sx={{ fontWeight: 900, color: '#ffffff', fontSize: '1.05rem' }}>
+                              {model.name}
+                            </Typography>
+                            <Chip
+                              size="small"
+                              label={`Cấp ${model.tier} • ${model.englishName}`}
+                              sx={{
+                                height: 20,
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
+                                backgroundColor: 'rgba(56, 189, 248, 0.18)',
+                                color: '#7dd3fc',
+                              }}
+                            />
+                          </Box>
+                        </Box>
+
+                        <Chip
+                          label={isFree ? 'Miễn phí' : `🪙 ${model.priceCoins.toLocaleString()} Xu`}
+                          sx={{
+                            fontWeight: 900,
+                            backgroundColor: isFree
+                              ? 'rgba(16, 185, 129, 0.2)'
+                              : 'rgba(245, 158, 11, 0.2)',
+                            color: isFree ? '#6ee7b7' : '#fde68a',
+                            border: isFree ? '1px solid #10b981' : '1px solid #f59e0b',
+                          }}
+                        />
+                      </Box>
+
+                      <Typography variant="body2" sx={{ color: '#cbd5e1', mt: 1, fontSize: '0.88rem', lineHeight: 1.5 }}>
+                        {model.description}
+                      </Typography>
+
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mt: 1.5 }}>
+                        {model.highlights.map((hl, hIdx) => (
+                          <Chip
+                            key={hIdx}
+                            size="small"
+                            label={`✨ ${hl}`}
+                            sx={{
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                              color: '#e2e8f0',
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+
+                    <Box
+                      sx={{
+                        pt: 1.5,
+                        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                      }}
+                    >
+                      {isCurrent ? (
+                        <Button
+                          disabled
+                          variant="contained"
+                          sx={{
+                            backgroundColor: '#10b981 !important',
+                            color: '#0f172a !important',
+                            fontWeight: 900,
+                            borderRadius: 2,
+                            textTransform: 'none',
+                          }}
+                        >
+                          ✅ Đang Sử Dụng Mẫu Này
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="contained"
+                          disabled={busy || (!isFree && !canAfford)}
+                          onClick={async () => {
+                            if (!onUpgradeHouseModel) return;
+                            setBusy(true);
+                            try {
+                              await onUpgradeHouseModel(model);
+                            } finally {
+                              setBusy(false);
+                            }
+                          }}
+                          sx={{
+                            fontWeight: 900,
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            background: canAfford || isFree
+                              ? 'linear-gradient(135deg, #f59e0b, #ea580c)'
+                              : 'rgba(255,255,255,0.1)',
+                            color: canAfford || isFree ? '#ffffff' : '#64748b',
+                            boxShadow: canAfford || isFree ? '0 4px 14px rgba(234, 88, 12, 0.4)' : 'none',
+                          }}
+                        >
+                          {isFree ? '🔨 Đổi Sang Mẫu Này' : canAfford ? `🔨 Xây Dựng (🪙 ${model.priceCoins} Xu)` : 'Thiếu Xu'}
+                        </Button>
+                      )}
+                    </Box>
+                  </Paper>
+                );
+              })}
+            </Box>
+          </Box>
+        )}
+
         {/* TAB 1: MUA NỘI THẤT BẰNG XU */}
         {activeTab === 'shop' && (
           <Box>
@@ -961,17 +1189,22 @@ interface ShopAndWorkModalProps {
   userCoins: number;
   ownedItemCodes: string[];
   activeOutfitColor: string;
-  activeVehicle: 'none' | 'skateboard' | 'vespa' | 'motorbike' | 'sportscar';
+  activeVehicle: WorldVehicleType;
   onClose: () => void;
   onBuyShopItem: (item: ShopProductItem) => Promise<void>;
-  onEquipOutfit: (outfitColor: string, hatColor: string, name: string) => void;
+  onEquipOutfit: (item: ShopProductItem) => void;
   onEquipVehicle: (
-    vehicleType: 'none' | 'skateboard' | 'vespa' | 'motorbike' | 'sportscar',
+    vehicleType: WorldVehicleType,
+    vehicleColor: string | undefined,
     name: string
   ) => void;
+  onOpenWardrobe?: () => void;
   onCompleteWorkScenario: (scenario: WorkCustomerScenario) => Promise<void>;
   onFailWorkScenario?: (scenario: WorkCustomerScenario) => void;
 }
+
+// Lưu lịch sử các kịch bản khách hàng đã phục vụ để chọn ngẫu nhiên KHÔNG TRÙNG LẶP
+const sessionShopWorkHistoryMap: Record<string, string[]> = {};
 
 export function ShopAndWorkModal({
   shopId,
@@ -986,6 +1219,7 @@ export function ShopAndWorkModal({
   onBuyShopItem,
   onEquipOutfit,
   onEquipVehicle,
+  onOpenWardrobe,
   onCompleteWorkScenario,
   onFailWorkScenario,
 }: ShopAndWorkModalProps) {
@@ -993,7 +1227,7 @@ export function ShopAndWorkModal({
     isWorkingAsStaff ? initialTab : 'buy'
   );
   const [difficulty, setDifficulty] = useState<WorkDifficulty>('easy');
-  const [scenarioIdx, setScenarioIdx] = useState<number>(0);
+  const [currentScenario, setCurrentScenario] = useState<WorkCustomerScenario | null>(null);
   const [selectedOption, setSelectedOption] = useState<string>('');
   const [essayInput, setEssayInput] = useState<string>('');
   const [workFeedback, setWorkFeedback] = useState<{
@@ -1003,6 +1237,26 @@ export function ShopAndWorkModal({
     explanationVi: string;
   } | null>(null);
   const [busy, setBusy] = useState<boolean>(false);
+
+  // Chọn kịch bản khách hàng ngẫu nhiên KHÔNG LẶP LẠI theo độ khó
+  const pickNextWorkScenario = useCallback((venueId: ShopVenueId, diff: WorkDifficulty) => {
+    const s = CITY_SHOPS_DATA[venueId];
+    if (!s) return;
+    const pool = s.workScenarios.filter((sc) => sc.difficulty === diff);
+    const key = `${venueId}_${diff}`;
+    const history = sessionShopWorkHistoryMap[key] || [];
+    let unasked = pool.filter((sc) => !history.includes(sc.id));
+    if (unasked.length === 0) {
+      unasked = pool;
+      sessionShopWorkHistoryMap[key] = [];
+    }
+    const chosen = unasked[Math.floor(Math.random() * unasked.length)] || pool[0];
+    sessionShopWorkHistoryMap[key] = [...(sessionShopWorkHistoryMap[key] || []), chosen.id];
+    setCurrentScenario(chosen);
+    setSelectedOption('');
+    setEssayInput('');
+    setWorkFeedback(null);
+  }, []);
 
   // Tự động đóng modal sau khi trả lời xong (không cần bấm nút đón khách thủ công, quán tự điều phối khách)
   useEffect(() => {
@@ -1019,24 +1273,13 @@ export function ShopAndWorkModal({
   useEffect(() => {
     if (shopId) {
       setActiveTab(isWorkingAsStaff ? initialTab : 'buy');
-      setWorkFeedback(null);
-      setSelectedOption('');
-      setEssayInput('');
+      pickNextWorkScenario(shopId, difficulty);
     }
-  }, [shopId, initialTab, isWorkingAsStaff]);
+  }, [shopId, initialTab, isWorkingAsStaff, difficulty, pickNextWorkScenario]);
 
   const shop = shopId ? CITY_SHOPS_DATA[shopId] : null;
 
-  const scenariosForDifficulty = useMemo(() => {
-    if (!shop) return [];
-    return shop.workScenarios.filter((s) => s.difficulty === difficulty);
-  }, [shop, difficulty]);
-
-  if (!shop) return null;
-
-  const currentScenario =
-    scenariosForDifficulty[scenarioIdx % Math.max(1, scenariosForDifficulty.length)] ||
-    shop.workScenarios[0];
+  if (!shop || !currentScenario) return null;
 
   const handleCheckWorkAnswer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1116,6 +1359,26 @@ export function ShopAndWorkModal({
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexWrap: 'wrap' }}>
+          {(shopId === 'CLOTHING' || shopId === 'CAR_SHOWROOM') && onOpenWardrobe && (
+            <Button
+              size="small"
+              variant="contained"
+              onClick={() => {
+                onClose();
+                onOpenWardrobe();
+              }}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 900,
+                fontSize: '0.74rem',
+                borderRadius: 2,
+                background: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
+                color: '#ffffff',
+              }}
+            >
+              👗 Phòng Tự Phối Đồ & Đổi Màu Xe
+            </Button>
+          )}
           {onToggleWorkingAsStaff && (
             <Button
               size="small"
@@ -1221,17 +1484,47 @@ export function ShopAndWorkModal({
                   }}
                 >
                   <Box sx={{ display: 'flex', gap: 1.5 }}>
-                    <Typography sx={{ fontSize: '2.2rem' }}>{item.icon}</Typography>
+                    <Typography sx={{ fontSize: '2.4rem' }}>{item.icon}</Typography>
                     <Box sx={{ flex: 1 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 900, color: '#ffffff' }}>
-                        {item.name}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: '#38bdf8', fontWeight: 700 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 900, color: '#ffffff' }}>
+                          {item.name}
+                        </Typography>
+                        {item.brand && (
+                          <Chip
+                            size="small"
+                            label={item.brand}
+                            sx={{
+                              height: 20,
+                              fontSize: '0.66rem',
+                              fontWeight: 900,
+                              backgroundColor: 'rgba(236, 72, 153, 0.18)',
+                              color: '#fbcfe8',
+                              border: '1px solid rgba(236, 72, 153, 0.4)',
+                            }}
+                          />
+                        )}
+                        {item.speedBoost && (
+                          <Chip
+                            size="small"
+                            label={`⚡ ${item.speedBoost} m/s`}
+                            sx={{
+                              height: 20,
+                              fontSize: '0.66rem',
+                              fontWeight: 900,
+                              backgroundColor: 'rgba(56, 189, 248, 0.18)',
+                              color: '#bae6fd',
+                              border: '1px solid rgba(56, 189, 248, 0.4)',
+                            }}
+                          />
+                        )}
+                      </Box>
+                      <Typography variant="caption" sx={{ color: '#38bdf8', fontWeight: 700, display: 'block', mt: 0.3 }}>
                         {item.englishName}
                       </Typography>
                       <Typography
                         variant="caption"
-                        sx={{ color: '#94a3b8', display: 'block', mt: 0.5 }}
+                        sx={{ color: '#94a3b8', display: 'block', mt: 0.5, lineHeight: 1.4 }}
                       >
                         {item.description}
                       </Typography>
@@ -1272,13 +1565,7 @@ export function ShopAndWorkModal({
                       <Button
                         size="small"
                         variant="contained"
-                        onClick={() =>
-                          onEquipOutfit(
-                            item.outfitColor || '#38bdf8',
-                            item.hatColor || '#f59e0b',
-                            item.name
-                          )
-                        }
+                        onClick={() => onEquipOutfit(item)}
                         sx={{
                           textTransform: 'none',
                           fontWeight: 900,
@@ -1286,7 +1573,7 @@ export function ShopAndWorkModal({
                           color: '#0f172a',
                         }}
                       >
-                        {isEquippedOutfit ? '✅ Đang mặc' : '👕 Mặc ngay'}
+                        {isEquippedOutfit ? '✅ Đang mặc' : '👕 Mặc bộ này'}
                       </Button>
                     ) : item.category === 'vehicle' && isOwned ? (
                       <Button
@@ -1295,6 +1582,7 @@ export function ShopAndWorkModal({
                         onClick={() =>
                           onEquipVehicle(
                             isEquippedVehicle ? 'none' : item.vehicleType || 'skateboard',
+                            item.vehicleColor,
                             item.name
                           )
                         }
@@ -1355,10 +1643,9 @@ export function ShopAndWorkModal({
                   clickable
                   onClick={() => {
                     setDifficulty(lv.id as WorkDifficulty);
-                    setScenarioIdx(0);
-                    setSelectedOption('');
-                    setEssayInput('');
-                    setWorkFeedback(null);
+                    if (shopId) {
+                      pickNextWorkScenario(shopId, lv.id as WorkDifficulty);
+                    }
                   }}
                   sx={{
                     fontWeight: 900,
@@ -1609,7 +1896,39 @@ export function ShopAndWorkModal({
 
 // ============================================================================
 // 4. MODAL TRÒ CHUYỆN & LUYỆN TIẾNG ANH CÙNG CƯ DÂN / NPC TRÊN ĐƯỜNG (PHÍM [E])
+// Tích hợp Cơ Sở Dữ Liệu Tiếng Anh Đa Nguồn (6 bộ giáo trình + MongoDB + Open API)
 // ============================================================================
+const NPC_GLOBAL_HISTORY_STORAGE_KEY = 'lifeat_npc_global_asked_v3';
+const sessionGlobalAskedScenarioIds = new Set<string>();
+let cachedDynamicApiScenarios: StreetNpcScenario[] = [];
+let hasFetchedDynamicApi = false;
+
+function getAskedNpcScenarioIds(): Set<string> {
+  if (typeof window !== 'undefined' && sessionGlobalAskedScenarioIds.size === 0) {
+    try {
+      const raw = window.localStorage.getItem(NPC_GLOBAL_HISTORY_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((id) => sessionGlobalAskedScenarioIds.add(String(id)));
+        }
+      }
+    } catch {}
+  }
+  return sessionGlobalAskedScenarioIds;
+}
+
+function recordAskedNpcScenarioId(scenarioId: string): void {
+  sessionGlobalAskedScenarioIds.add(scenarioId);
+  markQuestionAsAsked(scenarioId);
+  if (typeof window !== 'undefined') {
+    try {
+      const recent = Array.from(sessionGlobalAskedScenarioIds).slice(-140);
+      window.localStorage.setItem(NPC_GLOBAL_HISTORY_STORAGE_KEY, JSON.stringify(recent));
+    } catch {}
+  }
+}
+
 interface StreetNpcDialogueModalProps {
   npcId: string | null;
   onClose: () => void;
@@ -1621,7 +1940,11 @@ export function StreetNpcDialogueModal({
   onClose,
   onCompleteScenario,
 }: StreetNpcDialogueModalProps) {
-  const [scenarioIdx, setScenarioIdx] = useState(0);
+  const [sourceFilter, setSourceFilter] = useState<EnglishDatabaseSourceId | 'ALL'>('ALL');
+  const [dynamicScenarios, setDynamicScenarios] = useState<StreetNpcScenario[]>(
+    cachedDynamicApiScenarios
+  );
+  const [currentScenario, setCurrentScenario] = useState<StreetNpcScenario | null>(null);
   const [selectedOption, setSelectedOption] = useState<string>('');
   const [essayInput, setEssayInput] = useState<string>('');
   const [busy, setBusy] = useState(false);
@@ -1632,24 +1955,101 @@ export function StreetNpcDialogueModal({
     explanationVi: string;
   } | null>(null);
 
-  useEffect(() => {
-    if (npcId) {
-      setScenarioIdx(0);
-      setSelectedOption('');
-      setEssayInput('');
-      setFeedback(null);
-    }
-  }, [npcId]);
-
   const npcProfile = npcId
     ? STREET_NPCS_DIALOGUE_DATA[npcId] || STREET_NPCS_DIALOGUE_DATA.CITIZEN_SOPHIA
     : null;
 
-  const currentScenario: StreetNpcScenario | null = useMemo(() => {
-    if (!npcProfile) return null;
-    const list = npcProfile.scenarios;
-    return list[scenarioIdx % list.length] || list[0] || null;
-  }, [npcProfile, scenarioIdx]);
+  // Đồng bộ thêm câu hỏi từ API Đa Nguồn (MongoDB + Open Trivia DB)
+  useEffect(() => {
+    if (hasFetchedDynamicApi) return;
+    hasFetchedDynamicApi = true;
+    fetch('/api/english-questions?includeExternal=true')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data?.questions)) {
+          const converted = (data.questions as MultiSourceEnglishItem[]).map(
+            convertMultiSourceItemToNpcScenario
+          );
+          cachedDynamicApiScenarios = converted;
+          setDynamicScenarios(converted);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Lựa chọn câu hỏi NGẪU NHIÊN & KHÔNG TRÙNG LẶP trên toàn thế giới
+  const pickNextScenario = useCallback(
+    (
+      npc: StreetNpcProfile,
+      filterSource: EnglishDatabaseSourceId | 'ALL' = sourceFilter,
+      excludeCurrentId?: string
+    ) => {
+      const askedSet = getAskedNpcScenarioIds();
+
+      // Hợp nhất kho câu hỏi của NPC và kho động từ API (MongoDB + OpenTDB)
+      const mergedMap = new Map<string, StreetNpcScenario>();
+      for (const sc of npc.scenarios) {
+        mergedMap.set(sc.id, sc);
+      }
+      for (const sc of dynamicScenarios) {
+        if (!mergedMap.has(sc.id)) {
+          mergedMap.set(sc.id, sc);
+        }
+      }
+      let pool = Array.from(mergedMap.values());
+
+      // Lọc theo nguồn học liệu nếu người chơi chọn nguồn cụ thể
+      if (filterSource !== 'ALL') {
+        const bySource = pool.filter((s) => s.sourceId === filterSource);
+        if (bySource.length > 0) {
+          pool = bySource;
+        }
+      }
+
+      // Tuyệt đối không lặp lại câu vừa hiển thị
+      if (excludeCurrentId && pool.length > 1) {
+        pool = pool.filter((s) => s.id !== excludeCurrentId);
+      }
+
+      // Lọc những câu CHƯA TỪNG HỎI trong suốt phiên chơi (bất kể hỏi bởi NPC nào)
+      let unasked = pool.filter((s) => !askedSet.has(s.id));
+
+      // Nếu đã trả lời hết sạch toàn bộ ngân hàng trong nguồn này -> Xoay vòng mới
+      if (unasked.length === 0) {
+        pool.forEach((s) => sessionGlobalAskedScenarioIds.delete(s.id));
+        unasked = pool;
+      }
+
+      // Xáo trộn Fisher-Yates hoàn toàn ngẫu nhiên (không cố định thứ tự 1-2 đầu danh sách!)
+      const randomIndex = Math.floor(Math.random() * unasked.length);
+      const chosen = unasked[randomIndex] || npc.scenarios[0];
+
+      recordAskedNpcScenarioId(chosen.id);
+
+      // Xáo trộn luôn thứ tự 4 đáp án A, B, C, D để người chơi không học vẹt vị trí
+      const shuffledOptions =
+        chosen.options && chosen.options.length > 1
+          ? [...chosen.options].sort(() => Math.random() - 0.5)
+          : chosen.options;
+
+      setCurrentScenario({
+        ...chosen,
+        options: shuffledOptions,
+      });
+      setSelectedOption('');
+      setEssayInput('');
+      setFeedback(null);
+    },
+    [dynamicScenarios, sourceFilter]
+  );
+
+  useEffect(() => {
+    if (npcId && npcProfile) {
+      pickNextScenario(npcProfile, sourceFilter);
+    } else {
+      setCurrentScenario(null);
+    }
+  }, [npcId]);
 
   // Phát âm câu nói tiếng Anh của NPC bằng Web Speech API khi mở modal hoặc đổi câu
   const speakEnglishText = (text: string) => {
@@ -1685,7 +2085,9 @@ export function StreetNpcDialogueModal({
 
     let isCorrect = false;
     if (currentScenario.questionType === 'multiple_choice') {
-      isCorrect = selectedOption === currentScenario.correctAnswer;
+      isCorrect =
+        selectedOption.trim().toLowerCase() ===
+        currentScenario.correctAnswer.trim().toLowerCase();
     } else {
       const normalized = essayInput.trim().toLowerCase();
       const accepted = (currentScenario.acceptedAnswers || [currentScenario.correctAnswer]).map(
@@ -1717,11 +2119,14 @@ export function StreetNpcDialogueModal({
     }
   };
 
+  const totalUniqueQuestionsCount =
+    npcProfile.scenarios.length + dynamicScenarios.length;
+
   return (
     <Dialog
       open={Boolean(npcId)}
       onClose={onClose}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
       PaperProps={{
         sx: {
@@ -1767,13 +2172,15 @@ export function StreetNpcDialogueModal({
             </Typography>
           </Box>
         </Box>
-        <IconButton onClick={onClose} sx={{ color: '#94a3b8' }}>
-          <CloseRoundedIcon />
-        </IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <IconButton onClick={onClose} sx={{ color: '#94a3b8' }}>
+            <CloseRoundedIcon />
+          </IconButton>
+        </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 2.5 }}>
-        {/* Nguồn sách Destination B1 */}
+      <DialogContent sx={{ pt: 2 }}>
+        {/* Nhãn Nguồn học liệu & Phần thưởng */}
         <Box
           sx={{
             display: 'flex',
@@ -1789,7 +2196,7 @@ export function StreetNpcDialogueModal({
             label={`📚 ${currentScenario.unitSource || ENGLISH_SOURCE_BOOK.title}`}
             sx={{
               fontWeight: 800,
-              fontSize: '0.7rem',
+              fontSize: '0.72rem',
               backgroundColor: 'rgba(56, 189, 248, 0.16)',
               color: '#7dd3fc',
               border: '1px solid rgba(56, 189, 248, 0.35)',
@@ -1820,7 +2227,7 @@ export function StreetNpcDialogueModal({
         >
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.8 }}>
             <Typography variant="caption" sx={{ color: '#38bdf8', fontWeight: 900 }}>
-              🗣️ {npcProfile.name} trò chuyện cùng bạn:
+              🗣️ {npcProfile.name} hỏi bạn:
             </Typography>
             <Button
               size="small"
@@ -1869,11 +2276,13 @@ export function StreetNpcDialogueModal({
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
               {currentScenario.options.map((opt, idx) => {
                 const isSelected = selectedOption === opt;
-                const isRightOption = feedback && opt === currentScenario.correctAnswer;
+                const isRightOption =
+                  feedback &&
+                  opt.trim().toLowerCase() === currentScenario.correctAnswer.trim().toLowerCase();
                 const isWrongSelected = feedback && isSelected && !feedback.isCorrect;
                 return (
                   <Button
-                    key={opt}
+                    key={`${opt}-${idx}`}
                     type="button"
                     disabled={Boolean(feedback)}
                     onClick={() => setSelectedOption(opt)}
@@ -1951,28 +2360,23 @@ export function StreetNpcDialogueModal({
             </Alert>
           )}
 
-          <DialogActions sx={{ px: 0, pb: 0, justifyContent: 'space-between' }}>
-            <Button
-              type="button"
-              onClick={onClose}
-              sx={{ color: '#94a3b8', fontWeight: 700, textTransform: 'none' }}
-            >
-              Đóng hội thoại
-            </Button>
+          <DialogActions sx={{ px: 0, pb: 0, justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                type="button"
+                onClick={onClose}
+                sx={{ color: '#94a3b8', fontWeight: 700, textTransform: 'none' }}
+              >
+                Đóng
+              </Button>
+            </Box>
 
             {feedback ? (
               <Button
                 type="button"
                 variant="contained"
                 onClick={() => {
-                  if (npcProfile.scenarios.length > 1) {
-                    setScenarioIdx((i) => i + 1);
-                    setSelectedOption('');
-                    setEssayInput('');
-                    setFeedback(null);
-                  } else {
-                    onClose();
-                  }
+                  pickNextScenario(npcProfile, sourceFilter, currentScenario.id);
                 }}
                 sx={{
                   borderRadius: 2.5,
@@ -1983,9 +2387,7 @@ export function StreetNpcDialogueModal({
                   color: '#0f172a',
                 }}
               >
-                {npcProfile.scenarios.length > 1
-                  ? `⏭️ Chủ đề tiếp theo cùng ${npcProfile.name}`
-                  : '✅ Hoàn thành cuộc trò chuyện'}
+                ⏭️ Câu hỏi ngẫu nhiên tiếp theo cùng {npcProfile.name}
               </Button>
             ) : (
               <Button
@@ -2014,5 +2416,770 @@ export function StreetNpcDialogueModal({
       </DialogContent>
     </Dialog>
   );
+}
+
+// ============================================================================
+// 5. STUDIO TỰ PHỐI ĐỒ THỜI TRANG & GARA ĐỘ XE (MIX & MATCH WARDROBE STUDIO)
+// ============================================================================
+export interface WardrobeCustomizationState {
+  avatarStyle: AvatarTopStyle;
+  outfitColor: string;
+  hatColor: string;
+  pantsColor: string;
+  shoeColor: string;
+  hairColor: string;
+  hatStyle: AvatarHatStyle;
+  accessory: AvatarAccessoryStyle;
+  activeVehicle: WorldVehicleType;
+  vehicleColor: string;
+}
+
+interface WardrobeMixMatchModalProps {
+  isOpen: boolean;
+  state: WardrobeCustomizationState;
+  ownedItemCodes?: string[];
+  onChange: (patch: Partial<WardrobeCustomizationState>) => void;
+  onClose: () => void;
+  onOpenShop?: (shopId: 'CLOTHING' | 'CAR_SHOWROOM') => void;
+}
+
+const CLOTHING_CATEGORIES = [
+  { id: 'all', label: 'Tất cả' },
+  { id: 'streetwear', label: '🧥 Streetwear' },
+  { id: 'suit', label: '🤵 Vest & Quý tộc' },
+  { id: 'y2k', label: '🌸 Y2K & Trẻ trung' },
+  { id: 'royal', label: '👑 Hoàng gia & Dạ tiệc' },
+  { id: 'cyberpunk', label: '🦾 Cyberpunk' },
+];
+
+const ACCESSORY_CATEGORIES = [
+  { id: 'all', label: 'Tất cả' },
+  { id: 'hat', label: '👑 Mũ & Vương miện' },
+  { id: 'back', label: '🪽 Cánh & Đeo lưng' },
+  { id: 'glasses', label: '🕶️ Kính & Phụ kiện' },
+];
+
+const VEHICLE_CATEGORIES = [
+  { id: 'all', label: 'Tất cả' },
+  { id: 'starter', label: '🚶 Đi bộ & Ván trượt' },
+  { id: 'bike', label: '🏍️ Mô tô & Xe máy' },
+  { id: 'sport', label: '🏎️ Siêu xe thể thao' },
+  { id: 'suv', label: '🚙 SUV & Xe sang' },
+];
+
+interface AccessoryItemDef {
+  id: string;
+  category: 'hat' | 'back' | 'glasses';
+  label: string;
+  icon: string;
+  hatStyle?: AvatarHatStyle;
+  accessory?: AvatarAccessoryStyle;
+  defaultUnlocked?: boolean;
+}
+
+const ACCESSORY_ITEMS_LIST: AccessoryItemDef[] = [
+  // Mũ & Vương miện
+  { id: 'snapback', category: 'hat', hatStyle: 'snapback', label: 'Mũ Lưỡi Trai Snapback', icon: '🧢', defaultUnlocked: true },
+  { id: 'beret', category: 'hat', hatStyle: 'beret', label: 'Mũ Nồi Nghệ Sĩ Paris Beret', icon: '🎨' },
+  { id: 'crown', category: 'hat', hatStyle: 'crown', label: 'Vương Miện Hoàng Gia Đính Đá', icon: '👑' },
+  { id: 'cat_ears', category: 'hat', hatStyle: 'cat_ears', label: 'Mũ Tai Mèo Phát Sáng Harajuku', icon: '🐱' },
+  { id: 'halo', category: 'hat', hatStyle: 'halo', label: 'Vòng Hào Quang Thiên Thần', icon: '😇' },
+  { id: 'no_hat', category: 'hat', hatStyle: 'none', label: 'Tháo Mũ (Khoe tóc tự nhiên)', icon: '💇', defaultUnlocked: true },
+  // Cánh & Đeo lưng
+  { id: 'angel_wings', category: 'back', accessory: 'angel_wings', label: 'Đôi Cánh Thiên Thần Tuyết Lông Vũ', icon: '🪽' },
+  { id: 'cyber_wings', category: 'back', accessory: 'cyber_wings', label: 'Đôi Cánh Cơ Giới Cyber 2077', icon: '🦾' },
+  { id: 'guitar_back', category: 'back', accessory: 'guitar_back', label: 'Đàn Guitar Acoustic Gỗ Lãng Tử', icon: '🎸' },
+  { id: 'crossbody_bag', category: 'back', accessory: 'crossbody_bag', label: 'Túi Da Đeo Chéo Thời Trang', icon: '👜' },
+  // Kính & Tai nghe
+  { id: 'sunglasses', category: 'glasses', accessory: 'sunglasses', label: 'Kính Râm Thời Thượng Sành Điệu', icon: '🕶️' },
+  { id: 'headphones', category: 'glasses', accessory: 'headphones', label: 'Tai Nghe DJ Chống Ồn', icon: '🎧', defaultUnlocked: true },
+  { id: 'no_accessory', category: 'glasses', accessory: 'none', label: 'Tối Giản (Không đeo phụ kiện)', icon: '✨', defaultUnlocked: true },
+];
+
+export function WardrobeMixMatchModal({
+  isOpen,
+  state,
+  ownedItemCodes = [],
+  onChange,
+  onClose,
+  onOpenShop,
+}: WardrobeMixMatchModalProps) {
+  const [tab, setTab] = useState<'fashion' | 'accessories' | 'garage'>('fashion');
+  const [clothingCat, setClothingCat] = useState<string>('all');
+  const [accessoryCat, setAccessoryCat] = useState<string>('all');
+  const [vehicleCat, setVehicleCat] = useState<string>('all');
+
+  const ownedSet = useMemo(
+    () => new Set<string>(['SKATEBOARD_STARTER', ...ownedItemCodes]),
+    [ownedItemCodes]
+  );
+
+  // 1. Quần áo đã mua / sở hữu (gồm món mặc định miễn phí)
+  const myPurchasedClothing = useMemo(() => {
+    return (CITY_SHOPS_DATA.CLOTHING.products || []).filter(
+      (item) => item.priceCoins === 0 || ownedSet.has(item.id)
+    );
+  }, [ownedSet]);
+
+  // Bộ sưu tập các kiểu nón & phụ kiện đã mở khóa từ trang phục đã mua
+  const unlockedHatStyles = useMemo(() => {
+    const set = new Set<AvatarHatStyle>(['none', 'snapback']);
+    myPurchasedClothing.forEach((c) => {
+      if (c.hatStyle) set.add(c.hatStyle);
+    });
+    return set;
+  }, [myPurchasedClothing]);
+
+  const unlockedAccessories = useMemo(() => {
+    const set = new Set<AvatarAccessoryStyle>(['none', 'headphones']);
+    myPurchasedClothing.forEach((c) => {
+      if (c.accessory) set.add(c.accessory);
+    });
+    return set;
+  }, [myPurchasedClothing]);
+
+  // Lọc quần áo theo danh mục
+  const filteredClothing = useMemo(() => {
+    if (clothingCat === 'all') return myPurchasedClothing;
+    return myPurchasedClothing.filter((c) => c.avatarStyle === clothingCat);
+  }, [myPurchasedClothing, clothingCat]);
+
+  // Lọc phụ kiện theo danh mục
+  const filteredAccessories = useMemo(() => {
+    if (accessoryCat === 'all') return ACCESSORY_ITEMS_LIST;
+    return ACCESSORY_ITEMS_LIST.filter((a) => a.category === accessoryCat);
+  }, [accessoryCat]);
+
+  // 2. Xe trong Gara: Phương tiện mặc định (đi bộ, ván trượt) và tất cả xe ĐÃ MUA
+  const myPurchasedVehicles = useMemo(() => {
+    const defaultList: Array<{
+      id: string;
+      category: 'starter' | 'bike' | 'sport' | 'suv';
+      vehicleType: WorldVehicleType;
+      label: string;
+      speed: string;
+      icon: string;
+      brand: string;
+      vehicleColor?: string;
+    }> = [
+      {
+        id: 'WALK_DEFAULT',
+        category: 'starter',
+        vehicleType: 'none',
+        label: 'Đi Bộ Dạo Phố',
+        speed: '7.5 m/s',
+        icon: '🚶',
+        brand: 'Đi bộ tự do',
+      },
+      {
+        id: 'VEHICLE_SKATEBOARD',
+        category: 'starter',
+        vehicleType: 'skateboard',
+        label: 'Ván Trượt Thể Thao Skateboard',
+        speed: '14.5 m/s',
+        icon: '🛹',
+        brand: 'LifeAt Skate',
+        vehicleColor: '#f59e0b',
+      },
+    ];
+
+    const showroomPurchased = (CITY_SHOPS_DATA.CAR_SHOWROOM.products || [])
+      .filter((car) => car.id !== 'VEHICLE_SKATEBOARD' && ownedSet.has(car.id))
+      .map((car) => {
+        let cat: 'starter' | 'bike' | 'sport' | 'suv' = 'sport';
+        if (car.vehicleType === 'hoverboard' || car.vehicleType === 'skateboard') cat = 'starter';
+        else if (car.vehicleType === 'vespa' || car.vehicleType === 'harley' || car.vehicleType === 'motorbike') cat = 'bike';
+        else if (car.vehicleType === 'cybertruck' || car.vehicleType === 'gclass' || car.vehicleType === 'rollsroyce') cat = 'suv';
+        else cat = 'sport';
+
+        return {
+          id: car.id,
+          category: cat,
+          vehicleType: car.vehicleType || 'sportscar',
+          label: car.name,
+          speed: `${car.speedBoost || 24.0} m/s`,
+          icon: car.icon,
+          brand: car.brand || 'Luxury Auto',
+          vehicleColor: car.vehicleColor,
+        };
+      });
+
+    return [...defaultList, ...showroomPurchased];
+  }, [ownedSet]);
+
+  const filteredVehicles = useMemo(() => {
+    if (vehicleCat === 'all') return myPurchasedVehicles;
+    return myPurchasedVehicles.filter((v) => v.category === vehicleCat);
+  }, [myPurchasedVehicles, vehicleCat]);
+
+  return (
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          background: 'linear-gradient(145deg, #0f172a 0%, #1e1b4b 100%)',
+          border: '2px solid #ec4899',
+          boxShadow: '0 24px 70px rgba(0, 0, 0, 0.85)',
+          color: '#f8fafc',
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: '1px solid rgba(255,255,255,0.1)',
+          pb: 1.5,
+        }}
+      >
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 900, color: '#ffffff' }}>
+            👗 Tủ Đồ Thời Trang & Gara Xe Cá Nhân
+          </Typography>
+          <Typography variant="caption" sx={{ color: '#fbcfe8', fontWeight: 700 }}>
+            Chỉ chứa những trang phục, phụ kiện và phương tiện bạn đã mua!
+          </Typography>
+        </Box>
+        <IconButton onClick={onClose} sx={{ color: '#94a3b8' }}>
+          <CloseRoundedIcon />
+        </IconButton>
+      </DialogTitle>
+
+      <Box sx={{ borderBottom: '1px solid rgba(255,255,255,0.1)', px: 2 }}>
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v)}
+          textColor="inherit"
+          sx={{
+            '& .MuiTab-root': {
+              textTransform: 'none',
+              fontWeight: 900,
+              color: '#94a3b8',
+              '&.Mui-selected': { color: '#f472b6' },
+            },
+          }}
+        >
+          <Tab value="fashion" label={`👕 Tủ Quần Áo (${myPurchasedClothing.length})`} />
+          <Tab value="accessories" label="👑 Mũ & Phụ Kiện" />
+          <Tab value="garage" label={`🏎️ Gara Phương Tiện (${myPurchasedVehicles.length})`} />
+        </Tabs>
+      </Box>
+
+      <DialogContent sx={{ pt: 2.5, maxHeight: '72vh' }}>
+        {/* ============================================================== */}
+        {/* TAB 1: TỦ QUẦN ÁO (PHÂN LOẠI DANH MỤC - KHÔNG CÓ BẢNG PHỐI MÀU) */}
+        {/* ============================================================== */}
+        {tab === 'fashion' && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            {/* Thanh Phân Loại Danh Mục Trang Phục */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {CLOTHING_CATEGORIES.map((cat) => (
+                  <Chip
+                    key={cat.id}
+                    label={cat.label}
+                    clickable
+                    onClick={() => setClothingCat(cat.id)}
+                    sx={{
+                      fontWeight: 800,
+                      backgroundColor:
+                        clothingCat === cat.id ? '#ec4899' : 'rgba(255,255,255,0.08)',
+                      color: clothingCat === cat.id ? '#ffffff' : '#cbd5e1',
+                      border: clothingCat === cat.id ? '1px solid #fbcfe8' : '1px solid transparent',
+                    }}
+                  />
+                ))}
+              </Box>
+
+              {onOpenShop && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    onClose();
+                    onOpenShop('CLOTHING');
+                  }}
+                  sx={{
+                    textTransform: 'none',
+                    fontSize: '0.74rem',
+                    fontWeight: 800,
+                    borderRadius: 2,
+                    borderColor: '#ec4899',
+                    color: '#fbcfe8',
+                  }}
+                >
+                  🛍️ Sắm Thêm Quần Áo Tại Shop
+                </Button>
+              )}
+            </Box>
+
+            {/* Danh Sách Các Bộ Đồ Đã Mua Thuộc Danh Mục */}
+            {filteredClothing.length === 0 ? (
+              <Paper
+                sx={{
+                  p: 4,
+                  textAlign: 'center',
+                  borderRadius: 3,
+                  backgroundColor: 'rgba(15, 23, 42, 0.5)',
+                  border: '1px dashed rgba(255,255,255,0.15)',
+                }}
+              >
+                <Typography sx={{ fontSize: '2.5rem', mb: 1 }}>👗</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 800, color: '#fbcfe8' }}>
+                  Chưa có trang phục nào thuộc phân loại này trong tủ đồ của bạn!
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', mb: 2 }}>
+                  Ghé Shop Thời Trang Royal Fashion Boutique để mua thêm nhiều mẫu đẹp nhé.
+                </Typography>
+                {onOpenShop && (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => {
+                      onClose();
+                      onOpenShop('CLOTHING');
+                    }}
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 800,
+                      borderRadius: 2,
+                      background: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
+                    }}
+                  >
+                    🛍️ Đến Cửa Hàng Thời Trang Ngay
+                  </Button>
+                )}
+              </Paper>
+            ) : (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                  gap: 1.5,
+                }}
+              >
+                {filteredClothing.map((cloth) => {
+                  const isCurrentFullSet =
+                    state.avatarStyle === cloth.avatarStyle &&
+                    state.outfitColor === cloth.outfitColor;
+                  return (
+                    <Paper
+                      key={cloth.id}
+                      sx={{
+                        p: 2,
+                        borderRadius: 3,
+                        backgroundColor: isCurrentFullSet
+                          ? 'rgba(236, 72, 153, 0.24)'
+                          : 'rgba(15, 23, 42, 0.72)',
+                        border: isCurrentFullSet
+                          ? '2px solid #ec4899'
+                          : '1px solid rgba(255,255,255,0.12)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: 1.5,
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          borderColor: '#ec4899',
+                          transform: 'translateY(-2px)',
+                        },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', gap: 1.5 }}>
+                        <Typography sx={{ fontSize: '2.4rem' }}>{cloth.icon}</Typography>
+                        <Box sx={{ flex: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 900, color: '#ffffff' }}>
+                              {cloth.name}
+                            </Typography>
+                            {cloth.brand && (
+                              <Chip
+                                size="small"
+                                label={cloth.brand}
+                                sx={{
+                                  height: 18,
+                                  fontSize: '0.64rem',
+                                  fontWeight: 900,
+                                  backgroundColor: 'rgba(236, 72, 153, 0.18)',
+                                  color: '#fbcfe8',
+                                  border: '1px solid rgba(236, 72, 153, 0.4)',
+                                }}
+                              />
+                            )}
+                          </Box>
+                          <Typography variant="caption" sx={{ color: '#38bdf8', fontWeight: 700, display: 'block', mt: 0.3 }}>
+                            {cloth.englishName}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', mt: 0.5 }}>
+                            {cloth.description}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 1, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                        <Button
+                          size="small"
+                          variant={isCurrentFullSet ? 'contained' : 'outlined'}
+                          onClick={() => {
+                            onChange({
+                              ...(cloth.outfitColor ? { outfitColor: cloth.outfitColor } : {}),
+                              ...(cloth.hatColor ? { hatColor: cloth.hatColor } : {}),
+                              ...(cloth.pantsColor ? { pantsColor: cloth.pantsColor } : {}),
+                              ...(cloth.shoeColor ? { shoeColor: cloth.shoeColor } : {}),
+                              ...(cloth.avatarStyle ? { avatarStyle: cloth.avatarStyle } : {}),
+                              ...(cloth.hatStyle ? { hatStyle: cloth.hatStyle } : {}),
+                              ...(cloth.accessory ? { accessory: cloth.accessory } : {}),
+                            });
+                          }}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 900,
+                            fontSize: '0.76rem',
+                            borderRadius: 2,
+                            px: 2.5,
+                            backgroundColor: isCurrentFullSet ? '#ec4899' : 'transparent',
+                            color: '#ffffff',
+                            borderColor: '#ec4899',
+                          }}
+                        >
+                          {isCurrentFullSet ? '✅ Đang mặc' : '👕 Mặc Bộ Này'}
+                        </Button>
+                      </Box>
+                    </Paper>
+                  );
+                })}
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB 2: MŨ & PHỤ KIỆN (PHÂN LOẠI DANH MỤC - KHÔNG CÓ BẢNG PHỐI MÀU) */}
+        {/* ============================================================== */}
+        {tab === 'accessories' && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            {/* Thanh Phân Loại Danh Mục Phụ Kiện */}
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {ACCESSORY_CATEGORIES.map((cat) => (
+                <Chip
+                  key={cat.id}
+                  label={cat.label}
+                  clickable
+                  onClick={() => setAccessoryCat(cat.id)}
+                  sx={{
+                    fontWeight: 800,
+                    backgroundColor:
+                      accessoryCat === cat.id ? '#a855f7' : 'rgba(255,255,255,0.08)',
+                    color: accessoryCat === cat.id ? '#ffffff' : '#cbd5e1',
+                    border: accessoryCat === cat.id ? '1px solid #d8b4fe' : '1px solid transparent',
+                  }}
+                />
+              ))}
+            </Box>
+
+            {/* Danh Sách Mũ & Phụ Kiện */}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                gap: 1.5,
+              }}
+            >
+              {filteredAccessories.map((item) => {
+                const isHat = item.category === 'hat';
+                const isUnlocked = isHat
+                  ? item.defaultUnlocked || (item.hatStyle && unlockedHatStyles.has(item.hatStyle))
+                  : item.defaultUnlocked || (item.accessory && unlockedAccessories.has(item.accessory));
+
+                const isEquipped = isHat
+                  ? state.hatStyle === item.hatStyle
+                  : state.accessory === item.accessory;
+
+                return (
+                  <Paper
+                    key={item.id}
+                    sx={{
+                      p: 1.5,
+                      borderRadius: 2.5,
+                      backgroundColor: isEquipped
+                        ? 'rgba(168, 85, 247, 0.25)'
+                        : 'rgba(15, 23, 42, 0.72)',
+                      border: isEquipped
+                        ? '2px solid #a855f7'
+                        : '1px solid rgba(255,255,255,0.12)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      opacity: isUnlocked ? 1 : 0.5,
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                      <Typography sx={{ fontSize: '2rem' }}>{item.icon}</Typography>
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 800, color: '#ffffff' }}>
+                          {item.label}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: isUnlocked ? '#c084fc' : '#f87171', fontWeight: 700 }}>
+                          {isUnlocked ? 'Đã sở hữu' : '🔒 Cần mua trang phục tương ứng'}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    {isUnlocked ? (
+                      <Button
+                        size="small"
+                        variant={isEquipped ? 'contained' : 'outlined'}
+                        onClick={() => {
+                          if (isHat && item.hatStyle !== undefined) {
+                            onChange({ hatStyle: item.hatStyle });
+                          } else if (!isHat && item.accessory !== undefined) {
+                            onChange({ accessory: item.accessory });
+                          }
+                        }}
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 800,
+                          fontSize: '0.72rem',
+                          borderRadius: 2,
+                          backgroundColor: isEquipped ? '#a855f7' : 'transparent',
+                          color: '#ffffff',
+                          borderColor: '#a855f7',
+                        }}
+                      >
+                        {isEquipped ? '✅ Đang dùng' : 'Trang bị'}
+                      </Button>
+                    ) : (
+                      <Chip size="small" label="Chưa có" sx={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5' }} />
+                    )}
+                  </Paper>
+                );
+              })}
+            </Box>
+          </Box>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB 3: GARA PHƯƠNG TIỆN (PHÂN LOẠI DANH MỤC - KHÔNG ĐỘ MÀU SƠN) */}
+        {/* ============================================================== */}
+        {tab === 'garage' && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            {/* Thanh Phân Loại Danh Mục Xe */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {VEHICLE_CATEGORIES.map((cat) => (
+                  <Chip
+                    key={cat.id}
+                    label={cat.label}
+                    clickable
+                    onClick={() => setVehicleCat(cat.id)}
+                    sx={{
+                      fontWeight: 800,
+                      backgroundColor:
+                        vehicleCat === cat.id ? '#0284c7' : 'rgba(255,255,255,0.08)',
+                      color: vehicleCat === cat.id ? '#ffffff' : '#cbd5e1',
+                      border: vehicleCat === cat.id ? '1px solid #7dd3fc' : '1px solid transparent',
+                    }}
+                  />
+                ))}
+              </Box>
+
+              {onOpenShop && (
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={() => {
+                    onClose();
+                    onOpenShop('CAR_SHOWROOM');
+                  }}
+                  sx={{
+                    textTransform: 'none',
+                    fontSize: '0.74rem',
+                    fontWeight: 900,
+                    borderRadius: 2,
+                    background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
+                    color: '#ffffff',
+                  }}
+                >
+                  🏎️ Showroom Siêu Xe
+                </Button>
+              )}
+            </Box>
+
+            {/* Danh Sách Phương Tiện Đã Mua Thuộc Danh Mục */}
+            {filteredVehicles.length === 0 ? (
+              <Paper
+                sx={{
+                  p: 4,
+                  textAlign: 'center',
+                  borderRadius: 3,
+                  backgroundColor: 'rgba(15, 23, 42, 0.5)',
+                  border: '1px dashed rgba(255,255,255,0.15)',
+                }}
+              >
+                <Typography sx={{ fontSize: '2.5rem', mb: 1 }}>🏎️</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 800, color: '#7dd3fc' }}>
+                  Chưa có xe nào thuộc phân loại này trong gara của bạn!
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', mb: 2 }}>
+                  Ghé Kaia Luxury Auto Showroom để tậu thêm các dòng xe khủng nhé.
+                </Typography>
+                {onOpenShop && (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => {
+                      onClose();
+                      onOpenShop('CAR_SHOWROOM');
+                    }}
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 800,
+                      borderRadius: 2,
+                      background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
+                    }}
+                  >
+                    🏎️ Đến Showroom Mua Xe
+                  </Button>
+                )}
+              </Paper>
+            ) : (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                  gap: 1.5,
+                }}
+              >
+                {filteredVehicles.map((v) => {
+                  const active = state.activeVehicle === v.vehicleType;
+                  return (
+                    <Paper
+                      key={v.id}
+                      onClick={() => {
+                        onChange({
+                          activeVehicle: v.vehicleType,
+                          ...(v.vehicleColor ? { vehicleColor: v.vehicleColor } : {}),
+                        });
+                      }}
+                      sx={{
+                        p: 1.8,
+                        borderRadius: 3,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: active
+                          ? 'rgba(2, 132, 199, 0.32)'
+                          : 'rgba(15, 23, 42, 0.72)',
+                        border: active
+                          ? '2px solid #38bdf8'
+                          : '1px solid rgba(255,255,255,0.12)',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          borderColor: '#38bdf8',
+                          transform: 'translateY(-2px)',
+                        },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                        <Typography sx={{ fontSize: '2.2rem' }}>{v.icon}</Typography>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 900, color: '#ffffff' }}>
+                            {v.label}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#7dd3fc', fontWeight: 700, display: 'block', mt: 0.3 }}>
+                            {v.brand} • ⚡ {v.speed}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      {active ? (
+                        <Chip
+                          size="small"
+                          label="✅ Đang Lái"
+                          sx={{
+                            fontWeight: 900,
+                            backgroundColor: '#38bdf8',
+                            color: '#0f172a',
+                          }}
+                        />
+                      ) : (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          sx={{
+                            textTransform: 'none',
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            borderRadius: 1.5,
+                            borderColor: 'rgba(255,255,255,0.25)',
+                            color: '#cbd5e1',
+                          }}
+                        >
+                          Lái xe này
+                        </Button>
+                      )}
+                    </Paper>
+                  );
+                })}
+              </Box>
+            )}
+          </Box>
+        )}
+      </DialogContent>
+
+      <DialogActions sx={{ px: 3, pb: 2, justifyContent: 'space-between' }}>
+        <Button
+          variant="outlined"
+          onClick={() => {
+            if (myPurchasedClothing.length > 0) {
+              const randCloth =
+                myPurchasedClothing[Math.floor(Math.random() * myPurchasedClothing.length)];
+              onChange({
+                avatarStyle: randCloth.avatarStyle || 'streetwear',
+                outfitColor: randCloth.outfitColor || '#38bdf8',
+                hatColor: randCloth.hatColor || '#f59e0b',
+                pantsColor: randCloth.pantsColor || '#1e293b',
+                shoeColor: cloth_shoeColor(randCloth),
+                hatStyle: randCloth.hatStyle || 'snapback',
+                accessory: randCloth.accessory || 'headphones',
+              });
+            }
+          }}
+          sx={{
+            borderRadius: 2.5,
+            fontWeight: 900,
+            textTransform: 'none',
+            borderColor: '#f472b6',
+            color: '#fbcfe8',
+          }}
+        >
+          🎲 Mặc Ngẫu Nhiên (Theo đồ đã mua)
+        </Button>
+        <Button
+          variant="contained"
+          onClick={onClose}
+          sx={{
+            borderRadius: 2.5,
+            px: 3.5,
+            fontWeight: 900,
+            textTransform: 'none',
+            background: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
+            color: '#ffffff',
+          }}
+        >
+          ✨ Hoàn Tất & Dạo Phố Ngay!
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+function cloth_shoeColor(cloth: any): string {
+  return cloth.shoeColor || '#ffffff';
 }
 

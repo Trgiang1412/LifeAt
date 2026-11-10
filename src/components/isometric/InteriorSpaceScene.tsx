@@ -15,9 +15,15 @@ import {
   FURNITURE_CATALOG,
   type ShopVenueId,
   type WorkCustomerScenario,
+  type AvatarTopStyle,
+  type AvatarHatStyle,
+  type AvatarAccessoryStyle,
 } from '@/data/worldGameplayData';
+import confetti from 'canvas-confetti';
 import { FashionAvatar } from './FashionAvatar';
 import { getLocalPlayerPosition } from '@/stores/useMultiplayerStore';
+import { Classroom3DScene, type ClassroomQuizState } from './ClassroomQuizSystem';
+import { Cinema3DScene } from './CinemaTheaterSystem';
 
 export type ActiveInteriorSpace =
   | {
@@ -34,6 +40,14 @@ export type ActiveInteriorSpace =
   | {
       kind: 'SHOP';
       shopId: ShopVenueId;
+      returnPosition: [number, number, number];
+    }
+  | {
+      kind: 'SCHOOL';
+      returnPosition: [number, number, number];
+    }
+  | {
+      kind: 'CINEMA';
       returnPosition: [number, number, number];
     };
 
@@ -95,9 +109,43 @@ interface InteriorSpaceSceneProps {
   onInteriorZoneChange: (zone: 'BUY' | 'WORK' | null) => void;
   outfitColor: string;
   hatColor: string;
+  pantsColor?: string;
+  shoeColor?: string;
+  hairColor?: string;
+  avatarStyle?: AvatarTopStyle;
+  hatStyle?: AvatarHatStyle;
+  accessory?: AvatarAccessoryStyle;
   currentEmote: string | null;
   teleportTarget: { x: number; z: number; id: number } | null;
   cameraOrbitAngle?: number;
+  onAwardQuizReward?: (coins: number, exp: number, rankTitle: string) => void;
+  classroomQuizState?: ClassroomQuizState;
+  isCinemaLightsDimmed?: boolean;
+  hasCinemaTicket?: boolean;
+  onOpenCinemaTicketBox?: () => void;
+}
+
+function playQuizChime(isTop1: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const freqs = isTop1 ? [523.25, 659.25, 783.99, 1046.5] : [440, 554.37, 659.25];
+    freqs.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
+      gain.gain.setValueAtTime(0.001, ctx.currentTime + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + idx * 0.08 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.08 + 0.28);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + idx * 0.08);
+      osc.stop(ctx.currentTime + idx * 0.08 + 0.32);
+    });
+  } catch {}
 }
 
 export default function InteriorSpaceScene({
@@ -116,10 +164,23 @@ export default function InteriorSpaceScene({
   onInteriorZoneChange,
   outfitColor,
   hatColor,
+  pantsColor,
+  shoeColor,
+  hairColor,
+  avatarStyle,
+  hatStyle,
+  accessory,
   currentEmote,
   cameraOrbitAngle = Math.PI / 4,
+  onAwardQuizReward,
+  classroomQuizState,
+  isCinemaLightsDimmed = false,
+  hasCinemaTicket = false,
+  onOpenCinemaTicketBox,
 }: InteriorSpaceSceneProps) {
   const isHouse = interior.kind === 'HOUSE';
+  const isSchool = interior.kind === 'SCHOOL';
+  const isCinema = interior.kind === 'CINEMA';
   const shopData = interior.kind === 'SHOP' ? CITY_SHOPS_DATA[interior.shopId] : null;
 
   // Khoảng cách tương tác thời gian thực với các trạm trong phòng
@@ -144,9 +205,11 @@ export default function InteriorSpaceScene({
   const isWaitingNextRef = useRef<boolean>(false);
   const lastScenarioIdRef = useRef<string>('');
 
-  // Màu sàn & tường tùy theo không gian Nhà hoặc Quán
+  // Màu sàn & tường tùy theo không gian Nhà, Trường học, Rạp phim hoặc Quán
   const floorColor = useMemo(() => {
     if (interior.kind === 'HOUSE') return '#fdf8f0';
+    if (interior.kind === 'SCHOOL') return '#c28b58';
+    if (interior.kind === 'CINEMA') return '#090d16';
     switch (interior.shopId) {
       case 'CAFE':
         return '#d6b892';
@@ -161,6 +224,8 @@ export default function InteriorSpaceScene({
 
   const wallColor = useMemo(() => {
     if (interior.kind === 'HOUSE') return interior.wallColor || '#f5ebd6';
+    if (interior.kind === 'SCHOOL') return '#fef3c7';
+    if (interior.kind === 'CINEMA') return '#1e1b4b';
     switch (interior.shopId) {
       case 'CAFE':
         return '#78350f';
@@ -349,18 +414,33 @@ export default function InteriorSpaceScene({
       {/* ================================================================= */}
       {/* 1. MẶT SÀN, TƯỜNG & KHÔNG GIAN ĐẠI SẢNH (32m x 26m)                */}
       {/* ================================================================= */}
-      <color attach="background" args={['#0b132b']} />
-      <ambientLight intensity={1.6} />
+      <color attach="background" args={[isCinema ? '#020617' : '#0b132b']} />
+      <ambientLight intensity={isCinema && isCinemaLightsDimmed ? 0.55 : 1.6} />
       <directionalLight
         position={[20, 35, 18]}
-        intensity={2.0}
+        intensity={isCinema && isCinemaLightsDimmed ? 0.65 : 2.0}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
       />
-      <pointLight position={[0, 8, 0]} intensity={1.8} distance={45} color="#fef08a" />
-      <pointLight position={[-8, 7, -5]} intensity={1.2} distance={30} color="#fed7aa" />
-      <pointLight position={[8, 7, -5]} intensity={1.2} distance={30} color="#e0e7ff" />
+      <pointLight
+        position={[0, 8, 0]}
+        intensity={isCinema && isCinemaLightsDimmed ? 0.45 : 1.8}
+        distance={45}
+        color="#fef08a"
+      />
+      <pointLight
+        position={[-8, 7, -5]}
+        intensity={isCinema && isCinemaLightsDimmed ? 0.35 : 1.2}
+        distance={30}
+        color="#fed7aa"
+      />
+      <pointLight
+        position={[8, 7, -5]}
+        intensity={isCinema && isCinemaLightsDimmed ? 0.35 : 1.2}
+        distance={30}
+        color="#e0e7ff"
+      />
 
       {/* Mặt sàn chính của căn phòng */}
       <RigidBody type="fixed" colliders="cuboid" position={[0, -0.15, 0]}>
@@ -375,27 +455,29 @@ export default function InteriorSpaceScene({
         <planeGeometry args={[5.2, 2.2]} />
         <meshStandardMaterial color="#10b981" transparent opacity={0.65} />
       </mesh>
-      <Html position={[0, 0.6, 11.4]} center zIndexRange={[12, 0]}>
-        <button
-          type="button"
-          onClick={onExitInterior}
-          style={{
-            padding: '4px 12px',
-            borderRadius: '999px',
-            backgroundColor: 'rgba(15, 23, 42, 0.9)',
-            border: '1.5px solid #34d399',
-            color: '#a7f3d0',
-            fontWeight: 800,
-            fontSize: '11px',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          🚪 Bước Ra Thành Phố [Chạm thảm]
-        </button>
-      </Html>
+      {!isSchool && !isCinema && (
+        <Html position={[0, 0.6, 11.4]} center zIndexRange={[12, 0]}>
+          <button
+            type="button"
+            onClick={onExitInterior}
+            style={{
+              padding: '4px 12px',
+              borderRadius: '999px',
+              backgroundColor: 'rgba(15, 23, 42, 0.9)',
+              border: '1.5px solid #34d399',
+              color: '#a7f3d0',
+              fontWeight: 800,
+              fontSize: '11px',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            🚪 Bước Ra Thành Phố [Chạm thảm]
+          </button>
+        </Html>
+      )}
 
-      {/* 4 Bức tường: Tường Bắc & Tây full cao 6m tạo nền phòng; tường Nam & Đông cutaway thấp 1.2m để camera isometric không bị che */}
+      {/* 4 Bức tường: Trong Lớp Học / Rạp Phim tường Đông & Tây đối xứng cao 6.2m */}
       <RigidBody type="fixed" colliders="cuboid" position={[0, 3.1, -12.85]}>
         <mesh castShadow receiveShadow>
           <boxGeometry args={[32.0, 6.2, 0.5]} />
@@ -408,9 +490,13 @@ export default function InteriorSpaceScene({
           <meshStandardMaterial color={wallColor} roughness={0.5} />
         </mesh>
       </RigidBody>
-      <RigidBody type="fixed" colliders="cuboid" position={[15.85, 0.6, 0]}>
+      <RigidBody
+        type="fixed"
+        colliders="cuboid"
+        position={[15.85, isSchool || isCinema ? 3.1 : 0.6, 0]}
+      >
         <mesh castShadow receiveShadow>
-          <boxGeometry args={[0.5, 1.2, 26.0]} />
+          <boxGeometry args={[0.5, isSchool || isCinema ? 6.2 : 1.2, 26.0]} />
           <meshStandardMaterial color={wallColor} roughness={0.5} />
         </mesh>
       </RigidBody>
@@ -936,19 +1022,44 @@ export default function InteriorSpaceScene({
       )}
 
       {/* ================================================================= */}
+      {/* 2C. TRONG TRƯỜNG HỌC: LỚP HỌC TRỰC TUYẾN • CÔ LAN                 */}
+      {/* ================================================================= */}
+      {isSchool && classroomQuizState && (
+        <Classroom3DScene quizState={classroomQuizState} onExit={onExitInterior} />
+      )}
+
+      {/* ================================================================= */}
+      {/* 2D. TRONG RẠP CHIẾU PHIM: MÀN CHIẾU ĐẠI RẠP IMAX YOUTUBE          */}
+      {/* ================================================================= */}
+      {isCinema && (
+        <Cinema3DScene
+          isLightsDimmed={isCinemaLightsDimmed}
+          hasTicket={hasCinemaTicket}
+          onOpenTicketBox={onOpenCinemaTicketBox || (() => {})}
+        />
+      )}
+
+      {/* ================================================================= */}
       {/* 3. NHÂN VẬT NGƯỜI CHƠI DI CHUYỂN & XOAY GÓC NHÌN 360 ĐỘ          */}
       {/* ================================================================= */}
       <PlayerPhysics
-        initialPosition={[0, 0.25, 7.5]}
+        initialPosition={isSchool ? [0, 0.42, 2.05] : isCinema ? [0, 0.25, 2.5] : [0, 0.25, 7.5]}
         isInteriorMode={true}
+        isSchoolMode={isSchool || isCinema}
         isFishing={false}
         isSkateboarding={false}
         activeVehicle="none"
         outfitColor={outfitColor}
         hatColor={hatColor}
+        pantsColor={pantsColor}
+        shoeColor={shoeColor}
+        hairColor={hairColor}
+        avatarStyle={avatarStyle}
+        hatStyle={hatStyle}
+        accessory={accessory}
         currentEmote={currentEmote}
         teleportTarget={null}
-        cameraOrbitAngle={cameraOrbitAngle}
+        cameraOrbitAngle={isSchool || isCinema ? 0 : cameraOrbitAngle}
         onStepInteriorExitDoor={onExitInterior}
         onInteriorZoneChange={onInteriorZoneChange}
       />

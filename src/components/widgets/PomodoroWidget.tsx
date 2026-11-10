@@ -28,6 +28,7 @@ interface PomodoroWidgetProps {
   onMinimize?: () => void;
   settings: PomodoroSettings;
   onSessionComplete?: () => void;
+  onTimeChange?: (timeString: string, isRunning: boolean) => void;
   isHost?: boolean;
   hostName?: string;
   syncedTimer?: {
@@ -49,6 +50,7 @@ export default function PomodoroWidget({
   onMinimize,
   settings,
   onSessionComplete,
+  onTimeChange,
   isHost = true,
   hostName,
   syncedTimer,
@@ -62,6 +64,10 @@ export default function PomodoroWidget({
   // Keep ref to avoid stale closure in timer
   const modeRef = useRef(mode);
   modeRef.current = mode;
+  const isHostRef = useRef(isHost);
+  isHostRef.current = isHost;
+  const onTimerUpdateRef = useRef(onTimerUpdate);
+  onTimerUpdateRef.current = onTimerUpdate;
 
   const getDurationForMode = (m: PomodoroMode) => {
     switch (m) {
@@ -86,21 +92,53 @@ export default function PomodoroWidget({
       ? Math.floor((Date.now() - syncedTimer.lastUpdated) / 1000)
       : 0;
     const currentLeft = Math.max(0, syncedTimer.timeLeft - elapsed);
-    setTimeLeft(currentLeft);
-    setIsActive(syncedTimer.isActive);
+
+    // Nếu thời gian đã hết (currentLeft === 0) mà timer server vẫn báo isActive,
+    // khách không chạy tiếp trạng thái isActive nữa để tránh kẹt ở 00:00
+    if (currentLeft === 0) {
+      setTimeLeft(0);
+      setIsActive(false);
+    } else {
+      setTimeLeft(currentLeft);
+      setIsActive(syncedTimer.isActive);
+    }
   }, [syncedTimer, isHost]);
 
-  const handleModeChange = (newMode: PomodoroMode) => {
+  // Khi chủ phòng cập nhật cài đặt thời gian (ví dụ chỉnh 2p, 1p, 15p trong SettingsModal),
+  // cập nhật ngay lập tức thời gian đếm ngược nếu đồng hồ chưa chạy
+  useEffect(() => {
+    if (!isActive && isHost) {
+      const newDuration = getDurationForMode(mode);
+      setTimeLeft(newDuration);
+      if (onTimerUpdate) {
+        onTimerUpdate({
+          mode,
+          timeLeft: newDuration,
+          isActive: false,
+          lastUpdated: Date.now(),
+        });
+      }
+    }
+  }, [
+    settings.pomodoroTime,
+    settings.shortBreakTime,
+    settings.longBreakTime,
+    settings.longBreakInterval,
+    mode,
+    isHost,
+  ]);
+
+  const handleModeChange = (newMode: PomodoroMode, autoStart = false) => {
     if (!isHost) return;
     setMode(newMode);
-    setIsActive(false);
+    setIsActive(autoStart);
     const newDuration = getDurationForMode(newMode);
     setTimeLeft(newDuration);
     if (onTimerUpdate) {
       onTimerUpdate({
         mode: newMode,
         timeLeft: newDuration,
-        isActive: false,
+        isActive: autoStart,
         lastUpdated: Date.now(),
       });
     }
@@ -110,15 +148,14 @@ export default function PomodoroWidget({
     let interval: NodeJS.Timeout | null = null;
     if (isActive && timeLeft > 0) {
       interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
+        setTimeLeft((prev) => Math.max(0, prev - 1));
       }, 1000);
-    } else if (timeLeft === 0 && isActive) {
-      setIsActive(false);
-      // Play chime
+    } else if (timeLeft <= 0 && isActive) {
+      // Âm thanh chuông báo mỗi lần chuyển phiên
       soundEngine.playChime?.();
 
       if (modeRef.current === 'pomodoro') {
-        // Pomodoro complete!
+        // Hoàn thành phiên Pomodoro 25p
         confetti({
           particleCount: 80,
           spread: 70,
@@ -128,21 +165,39 @@ export default function PomodoroWidget({
         setCompletedSessions(nextCompleted);
         onSessionComplete?.();
 
-        if (isHost) {
-          if (nextCompleted % settings.longBreakInterval === 0) {
-            handleModeChange('longBreak');
+        if (isHostRef.current) {
+          // Kiểm tra xem đã đủ số vòng cài đặt (longBreakInterval) chưa
+          const isCycleComplete = nextCompleted % settings.longBreakInterval === 0;
+          if (isCycleComplete) {
+            // Đủ số vòng: Tự động chuyển sang Long Break (tự chạy nếu autoStartBreaks bật)
+            handleModeChange('longBreak', settings.autoStartBreaks ?? true);
           } else {
-            handleModeChange('shortBreak');
+            // Chưa đủ: Tự động chuyển sang Short Break (tự chạy nếu autoStartBreaks bật)
+            handleModeChange('shortBreak', settings.autoStartBreaks ?? true);
           }
         }
-      } else if (isHost) {
-        handleModeChange('pomodoro');
+      } else if (modeRef.current === 'shortBreak') {
+        // Sau khi nghỉ ngắn xong: Tự động quay lại Pomodoro cho vòng tiếp theo (tự chạy nếu autoStartPomodoros bật)
+        if (isHostRef.current) {
+          handleModeChange('pomodoro', settings.autoStartPomodoros ?? true);
+        }
+      } else if (modeRef.current === 'longBreak') {
+        // Sau khi chạy xong Long Break: ĐÃ KẾT THÚC TRỌN VẸN CHU KỲ!
+        confetti({
+          particleCount: 160,
+          spread: 100,
+          origin: { y: 0.5 },
+        });
+        if (isHostRef.current) {
+          // Lúc này mới kết thúc chu kỳ: Dừng đồng hồ, chuyển về Pomodoro sẵn sàng cho chu kỳ mới
+          handleModeChange('pomodoro', false);
+        }
       }
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isActive, timeLeft, completedSessions, settings, isHost]);
+  }, [isActive, timeLeft, completedSessions, settings]);
 
   const toggleTimer = () => {
     if (!isHost) return;
@@ -175,17 +230,23 @@ export default function PomodoroWidget({
 
   const skipTimer = () => {
     if (!isHost) return;
-    setIsActive(false);
     if (mode === 'pomodoro') {
-      handleModeChange('shortBreak');
+      const nextCompleted = completedSessions + 1;
+      setCompletedSessions(nextCompleted);
+      const isCycleComplete = nextCompleted % settings.longBreakInterval === 0;
+      handleModeChange(isCycleComplete ? 'longBreak' : 'shortBreak', false);
     } else {
-      handleModeChange('pomodoro');
+      handleModeChange('pomodoro', false);
     }
   };
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
   const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+  useEffect(() => {
+    onTimeChange?.(formattedTime, isActive);
+  }, [formattedTime, isActive, onTimeChange]);
 
   const totalModeDuration = getDurationForMode(mode);
   const progressPercent = ((totalModeDuration - timeLeft) / totalModeDuration) * 100;
@@ -196,7 +257,7 @@ export default function PomodoroWidget({
       sx={{
         width: 320,
         p: 2.5,
-        borderRadius: 4,
+        borderRadius: 2,
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
@@ -282,7 +343,7 @@ export default function PomodoroWidget({
         }}
       >
         <Button
-          onClick={() => handleModeChange('pomodoro')}
+          onClick={() => handleModeChange('pomodoro', false)}
           disabled={!isHost}
           sx={{
             borderRadius: 6,
@@ -299,7 +360,7 @@ export default function PomodoroWidget({
           Pomodoro
         </Button>
         <Button
-          onClick={() => handleModeChange('shortBreak')}
+          onClick={() => handleModeChange('shortBreak', false)}
           disabled={!isHost}
           sx={{
             borderRadius: 6,
@@ -316,7 +377,7 @@ export default function PomodoroWidget({
           Short Break
         </Button>
         <Button
-          onClick={() => handleModeChange('longBreak')}
+          onClick={() => handleModeChange('longBreak', false)}
           disabled={!isHost}
           sx={{
             borderRadius: 6,
@@ -434,12 +495,16 @@ export default function PomodoroWidget({
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2.5 }}>
         <Chip
           size="small"
-          label={`Cycle: ${completedSessions % settings.longBreakInterval + 1}/${settings.longBreakInterval}`}
+          label={
+            mode === 'longBreak'
+              ? `Long Break (${settings.longBreakInterval}/${settings.longBreakInterval}) 🎉`
+              : `Cycle: ${(completedSessions % settings.longBreakInterval) + 1}/${settings.longBreakInterval}`
+          }
           sx={{
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-            color: '#94a3b8',
+            backgroundColor: mode === 'longBreak' ? 'rgba(14, 165, 233, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+            color: mode === 'longBreak' ? '#38bdf8' : '#94a3b8',
             fontSize: '0.72rem',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
+            border: mode === 'longBreak' ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
           }}
         />
         <Chip

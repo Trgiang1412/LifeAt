@@ -179,7 +179,7 @@ export default function SpacesModal({
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: 4,
+          borderRadius: 2,
           background: 'rgba(15, 23, 42, 0.94)',
           backdropFilter: 'blur(30px)',
           border: '1px solid rgba(255, 255, 255, 0.15)',

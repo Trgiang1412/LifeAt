@@ -9,6 +9,7 @@ import {
   getNearbyStreetNpcId,
   setNearbyStreetNpcId,
 } from '@/stores/useMultiplayerStore';
+import { FashionAvatar, type FashionAvatarRef } from './FashionAvatar';
 
 export interface CitizenConfig {
   id: string;
@@ -34,24 +35,10 @@ function WanderingCitizen({
   onInteract?: (id: string) => void;
 }) {
   const groupRef = useRef<THREE.Group>(null);
-  const leftArmRef = useRef<THREE.Mesh>(null);
-  const rightArmRef = useRef<THREE.Mesh>(null);
-  const leftLegRef = useRef<THREE.Mesh>(null);
-  const rightLegRef = useRef<THREE.Mesh>(null);
+  const avatarRef = useRef<FashionAvatarRef>(null);
 
-  const [phraseIdx, setPhraseIdx] = useState(0);
-  const [showBubble, setShowBubble] = useState(true);
   const [isPlayerNear, setIsPlayerNear] = useState(false);
   const isPlayerNearRef = useRef(false);
-
-  // Luân phiên hiển thị câu thoại tiếng Anh tự nhiên khi đi dạo
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setShowBubble((prev) => !prev);
-      setPhraseIdx((prev) => (prev + 1) % citizen.phrases.length);
-    }, 4500 + Math.random() * 2500);
-    return () => clearInterval(interval);
-  }, [citizen.phrases.length]);
 
   // Lắng nghe phím [E] khi người chơi đứng gần NPC trên đường
   useEffect(() => {
@@ -148,11 +135,12 @@ function WanderingCitizen({
       currentAngleRef.current += angleDiff * Math.min(1.0, delta * 10);
       groupRef.current.rotation.y = currentAngleRef.current;
 
-      if (leftLegRef.current) leftLegRef.current.rotation.x *= 0.8;
-      if (rightLegRef.current) rightLegRef.current.rotation.x *= 0.8;
-      if (leftArmRef.current) leftArmRef.current.rotation.x *= 0.8;
-      if (rightArmRef.current) {
-        rightArmRef.current.rotation.x = -2.2 + Math.sin(state.clock.elapsedTime * 8) * 0.35;
+      if (avatarRef.current?.leftLeg) avatarRef.current.leftLeg.rotation.x *= 0.8;
+      if (avatarRef.current?.rightLeg) avatarRef.current.rightLeg.rotation.x *= 0.8;
+      if (avatarRef.current?.leftArm) avatarRef.current.leftArm.rotation.x *= 0.8;
+      if (avatarRef.current?.rightArm) {
+        avatarRef.current.rightArm.rotation.x =
+          -2.2 + Math.sin(state.clock.elapsedTime * 8) * 0.35;
       }
       return;
     }
@@ -160,9 +148,9 @@ function WanderingCitizen({
     // 1. Tiến về phía trước theo lộ trình khi người chơi không đứng sát
     distanceRef.current = (distanceRef.current + citizen.speed * delta) % segments.totalLength;
 
-    // Nhịp nhún nhảy nhẹ khi bước đi
+    // Nhịp bước đi
     walkCycleRef.current += delta * citizen.speed * 4.2;
-    const bounceY = Math.abs(Math.sin(walkCycleRef.current)) * 0.06;
+    const bounceY = Math.abs(Math.sin(walkCycleRef.current)) * 0.04;
 
     groupRef.current.position.set(posX, bounceY, posZ);
 
@@ -173,12 +161,12 @@ function WanderingCitizen({
     currentAngleRef.current += angleDiff * Math.min(1.0, delta * 10);
     groupRef.current.rotation.y = currentAngleRef.current;
 
-    // 3. Hoạt ảnh đánh tay và bước chân Chibi
-    const swing = Math.sin(walkCycleRef.current) * 0.5;
-    if (leftLegRef.current) leftLegRef.current.rotation.x = swing;
-    if (rightLegRef.current) rightLegRef.current.rotation.x = -swing;
-    if (leftArmRef.current) leftArmRef.current.rotation.x = -swing * 0.8;
-    if (rightArmRef.current) rightArmRef.current.rotation.x = swing * 0.8;
+    // 3. Hoạt ảnh đánh tay và bước chân Fashion Avatar
+    const swing = Math.sin(walkCycleRef.current) * 0.48;
+    if (avatarRef.current?.leftLeg) avatarRef.current.leftLeg.rotation.x = swing;
+    if (avatarRef.current?.rightLeg) avatarRef.current.rightLeg.rotation.x = -swing;
+    if (avatarRef.current?.leftArm) avatarRef.current.leftArm.rotation.x = -swing * 0.75;
+    if (avatarRef.current?.rightArm) avatarRef.current.rightArm.rotation.x = swing * 0.75;
   });
 
   return (
@@ -189,14 +177,13 @@ function WanderingCitizen({
         onInteract?.(citizen.id);
       }}
     >
-      {/* Bong bóng thoại tiếng Anh & Nhãn tên nổi trên đầu */}
-      <Html position={[0, 1.95, 0]} center zIndexRange={[15, 0]}>
+      {/* Nhãn tên gọn nhẹ: Chỉ hiện nút [E] khi người chơi đứng gần để không rối mắt */}
+      <Html position={[0, 2.15, 0]} center zIndexRange={[15, 0]}>
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '4px',
             pointerEvents: isPlayerNear ? 'auto' : 'none',
           }}
         >
@@ -211,12 +198,12 @@ function WanderingCitizen({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                padding: '6px 12px',
-                borderRadius: '14px',
+                padding: '4px 11px',
+                borderRadius: '999px',
                 background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
                 color: '#ffffff',
                 border: '1.5px solid #93c5fd',
-                boxShadow: '0 8px 20px rgba(37, 99, 235, 0.55)',
+                boxShadow: '0 6px 16px rgba(37, 99, 235, 0.5)',
                 fontWeight: 900,
                 fontSize: '11px',
                 whiteSpace: 'nowrap',
@@ -226,7 +213,7 @@ function WanderingCitizen({
             >
               <span
                 style={{
-                  padding: '1px 6px',
+                  padding: '1px 5px',
                   borderRadius: '5px',
                   backgroundColor: '#fbbf24',
                   color: '#0f172a',
@@ -236,116 +223,35 @@ function WanderingCitizen({
               >
                 E
               </span>
-              <span>Trò chuyện cùng {citizen.name}</span>
+              <span>{citizen.name}</span>
             </button>
           ) : (
-            showBubble && (
-              <div
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '12px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.94)',
-                  color: '#0f172a',
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  whiteSpace: 'nowrap',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-                  border: `1.5px solid ${citizen.badgeColor}`,
-                  fontFamily: 'system-ui, sans-serif',
-                }}
-              >
-                "{citizen.phrases[phraseIdx]}"
-              </div>
-            )
+            <div
+              style={{
+                padding: '2px 7px',
+                borderRadius: '999px',
+                backgroundColor: 'rgba(15, 23, 42, 0.68)',
+                border: `1px solid ${citizen.badgeColor}`,
+                color: '#f8fafc',
+                fontSize: '9.5px',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                fontFamily: 'system-ui, sans-serif',
+              }}
+            >
+              {citizen.name}
+            </div>
           )}
-
-          <div
-            style={{
-              padding: '2px 8px',
-              borderRadius: '10px',
-              backgroundColor: 'rgba(15, 23, 42, 0.88)',
-              border: `1.5px solid ${isPlayerNear ? '#38bdf8' : citizen.badgeColor}`,
-              color: '#f8fafc',
-              fontSize: '10px',
-              fontWeight: 800,
-              whiteSpace: 'nowrap',
-              fontFamily: 'system-ui, sans-serif',
-            }}
-          >
-            🚶 {citizen.name}{' '}
-            <span style={{ color: citizen.badgeColor, fontSize: '9px' }}>({citizen.role})</span>
-          </div>
         </div>
       </Html>
 
-      {/* Bóng đổ tròn dưới chân */}
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.35, 14]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.25} />
-      </mesh>
-
-      {/* Thân áo Chibi */}
-      <mesh position={[0, 0.55, 0]} castShadow>
-        <capsuleGeometry args={[0.23, 0.34, 8, 14]} />
-        <meshStandardMaterial color={citizen.shirtColor} roughness={0.35} />
-      </mesh>
-
-      {/* Ba lô nhỏ đeo sau lưng */}
-      <mesh position={[0, 0.58, -0.22]} castShadow>
-        <boxGeometry args={[0.28, 0.32, 0.14]} />
-        <meshStandardMaterial color={citizen.hatColor} roughness={0.4} />
-      </mesh>
-
-      {/* Đầu tròn Chibi */}
-      <group position={[0, 1.12, 0]}>
-        <mesh castShadow>
-          <sphereGeometry args={[0.32, 16, 16]} />
-          <meshStandardMaterial color="#fed7aa" roughness={0.4} />
-        </mesh>
-        {/* Mắt */}
-        <mesh position={[-0.1, 0.03, 0.28]}>
-          <sphereGeometry args={[0.04, 8, 8]} />
-          <meshBasicMaterial color="#0f172a" />
-        </mesh>
-        <mesh position={[0.1, 0.03, 0.28]}>
-          <sphereGeometry args={[0.04, 8, 8]} />
-          <meshBasicMaterial color="#0f172a" />
-        </mesh>
-        {/* Má hồng */}
-        <mesh position={[-0.18, -0.04, 0.26]}>
-          <sphereGeometry args={[0.04, 8, 8]} />
-          <meshBasicMaterial color="#fb7185" />
-        </mesh>
-        <mesh position={[0.18, -0.04, 0.26]}>
-          <sphereGeometry args={[0.04, 8, 8]} />
-          <meshBasicMaterial color="#fb7185" />
-        </mesh>
-        {/* Nón / Tóc */}
-        <mesh position={[0, 0.08, 0]} castShadow>
-          <sphereGeometry args={[0.34, 14, 14, 0, Math.PI * 2, 0, Math.PI / 2]} />
-          <meshStandardMaterial color={citizen.hatColor} roughness={0.3} />
-        </mesh>
-      </group>
-
-      {/* Hai tay chuyển động */}
-      <mesh ref={leftArmRef} position={[-0.3, 0.56, 0]} castShadow>
-        <capsuleGeometry args={[0.07, 0.24, 6, 10]} />
-        <meshStandardMaterial color="#fed7aa" />
-      </mesh>
-      <mesh ref={rightArmRef} position={[0.3, 0.56, 0]} castShadow>
-        <capsuleGeometry args={[0.07, 0.24, 6, 10]} />
-        <meshStandardMaterial color="#fed7aa" />
-      </mesh>
-
-      {/* Hai chân chuyển động */}
-      <mesh ref={leftLegRef} position={[-0.12, 0.22, 0]} castShadow>
-        <capsuleGeometry args={[0.08, 0.2, 6, 10]} />
-        <meshStandardMaterial color="#1e293b" />
-      </mesh>
-      <mesh ref={rightLegRef} position={[0.12, 0.22, 0]} castShadow>
-        <capsuleGeometry args={[0.08, 0.2, 6, 10]} />
-        <meshStandardMaterial color="#1e293b" />
-      </mesh>
+      <FashionAvatar
+        ref={avatarRef}
+        outfitColor={citizen.shirtColor}
+        hatColor={citizen.hatColor}
+        scale={1.3}
+        isNpc={true}
+      />
     </group>
   );
 }

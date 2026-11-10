@@ -78,20 +78,22 @@ app.prepare().then(() => {
   }
 
   const players = new Map();
+  // Quản lý thành viên trong từng Study Room cho WebRTC Audio & Video: Map<roomCode, Map<socketId, PeerInfo>>
+  const roomMembers = new Map();
 
   io.on('connection', (socket) => {
     console.log(`[Socket.io] Người chơi kết nối: ${socket.id}`);
 
     const initialPlot = pickSocketPlot(socket.id, null);
 
-    // 1. Khởi tạo trạng thái mặc định cho người chơi mới
+    // 1. Khởi tạo trạng thái mặc định cho người chơi mới (vị trí trên lối đi dạo quảng trường, không rơi vào đài phun nước)
     players.set(socket.id, {
       id: socket.id,
       clientId: socket.id,
       username: `Student_${socket.id.slice(0, 4)}`,
-      x: (Math.random() - 0.5) * 3,
+      x: (Math.random() - 0.5) * 2,
       y: 1.2,
-      z: 5 + (Math.random() - 0.5) * 3,
+      z: 11.5 + (Math.random() - 0.5) * 1.5,
       rotationY: 0,
       avatarColor: '#38bdf8',
       isSkateboarding: false,
@@ -167,9 +169,42 @@ app.prepare().then(() => {
     // 3.1 Tham gia phòng học ảo (joinRoom)
     socket.on('joinRoom', (data) => {
       const roomCode = typeof data === 'string' ? data : data?.roomCode;
+      const userId = data?.userId || socket.id;
+      const userName = data?.userName || 'Anonymous';
+      const isHost = Boolean(data?.isHost);
+
       if (roomCode) {
         socket.join(`room_${roomCode}`);
-        console.log(`[Socket.io] ${socket.id} đã vào room_${roomCode}`);
+        socket.currentRoomCode = roomCode;
+        socket.currentUserId = userId;
+        socket.currentUserName = userName;
+
+        if (!roomMembers.has(roomCode)) {
+          roomMembers.set(roomCode, new Map());
+        }
+        const members = roomMembers.get(roomCode);
+
+        // Gửi danh sách các peer đang có trong phòng cho người mới
+        const existingPeers = Array.from(members.values()).filter((p) => p.socketId !== socket.id);
+        socket.emit('roomPeerList', existingPeers);
+
+        // Đăng ký người mới vào phòng
+        members.set(socket.id, {
+          socketId: socket.id,
+          userId,
+          userName,
+          isHost,
+        });
+
+        // Báo cho các bạn học khác trong phòng
+        socket.to(`room_${roomCode}`).emit('peerJoined', {
+          socketId: socket.id,
+          userId,
+          userName,
+          isHost,
+        });
+
+        console.log(`[Socket.io] ${userName} (${socket.id}) đã vào room_${roomCode}. Phòng hiện có: ${members.size} người.`);
       }
     });
 
@@ -202,11 +237,52 @@ app.prepare().then(() => {
       }
     });
 
+    // 3.4 Đồng bộ trạng thái Mic & Video Webcam trong phòng học ảo
+    socket.on('roomMediaToggle', (data) => {
+      if (data && data.roomCode) {
+        const payload = {
+          ...data,
+          fromSocketId: socket.id,
+        };
+        socket.to(`room_${data.roomCode}`).emit('roomMediaChanged', payload);
+        io.emit(`roomMediaChanged_${data.roomCode}`, payload);
+      }
+    });
+
+    // 3.5 WebRTC Signaling cho truyền Mic Audio & Camera Video P2P giữa các thành viên
+    socket.on('webrtc_signal', (data) => {
+      if (data && data.roomCode) {
+        const payload = {
+          ...data,
+          fromSocketId: socket.id,
+        };
+        if (data.toSocketId) {
+          // Gửi trực tiếp đến người nhận đích danh
+          io.to(data.toSocketId).emit('webrtc_signal', payload);
+        } else {
+          // Broadcast đến toàn bộ bạn học khác trong phòng
+          socket.to(`room_${data.roomCode}`).emit('webrtc_signal', payload);
+        }
+      }
+    });
+
     // Người chơi ngắt kết nối
     socket.on('disconnect', () => {
       console.log(`[Socket.io] Người chơi rời phòng: ${socket.id}`);
       players.delete(socket.id);
       io.emit('playerLeft', socket.id);
+
+      if (socket.currentRoomCode && roomMembers.has(socket.currentRoomCode)) {
+        const members = roomMembers.get(socket.currentRoomCode);
+        members.delete(socket.id);
+        socket.to(`room_${socket.currentRoomCode}`).emit('peerLeft', {
+          socketId: socket.id,
+          userId: socket.currentUserId,
+        });
+        if (members.size === 0) {
+          roomMembers.delete(socket.currentRoomCode);
+        }
+      }
     });
   });
 
@@ -225,8 +301,18 @@ app.prepare().then(() => {
 
   const localIp = getLocalIp();
 
-  httpServer.listen(port, '0.0.0.0', (err) => {
-    if (err) throw err;
+  httpServer.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n❌ [LỖI] Cổng ${port} đang bị chiếm bởi một ứng dụng hoặc tiến trình Node khác!`);
+      console.error(`👉 Bạn hãy đóng tab terminal đang chạy server cũ, hoặc chạy lệnh: npx kill-port ${port}\n`);
+      process.exit(1);
+    } else {
+      console.error('❌ Lỗi HTTP Server:', err);
+      process.exit(1);
+    }
+  });
+
+  httpServer.listen(port, '0.0.0.0', () => {
     console.log(`\n  ▲ LifeAt Space Development Server ready:`);
     console.log(`  - Local:   http://localhost:${port}`);
     if (localIp) {
@@ -234,5 +320,8 @@ app.prepare().then(() => {
     }
     console.log(`  > [Multiplayer Server] Socket.io 20Hz World Broadcast Engine running on 0.0.0.0:${port}\n`);
   });
+}).catch((err) => {
+  console.error('\n❌ [LỖI KHỞI ĐỘNG NEXT.JS]:', err);
+  process.exit(1);
 });
 

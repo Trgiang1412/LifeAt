@@ -120,6 +120,44 @@ export async function POST(request: Request) {
       });
     }
 
+    // 3B. NÂNG CẤP / CHỌN MẪU NHÀ HIỆN ĐẠI
+    if (action === 'upgrade_house_model') {
+      const { modelId, modelName, price, wallColor, roofColor } = body;
+      const cost = Math.max(0, Number(price) || 0);
+
+      if ((user.tien || 0) < cost) {
+        return NextResponse.json(
+          {
+            thanhCong: false,
+            message: `Không đủ Xu! Mẫu nhà này cần ${cost} Xu (bạn đang có ${user.tien || 0} Xu). Hãy làm việc kiếm thêm Xu nhé!`,
+          },
+          { status: 400 }
+        );
+      }
+
+      user.tien = (user.tien || 0) - cost;
+      user.diemKinhNghiem = (user.diemKinhNghiem || 0) + 120;
+      await user.save();
+
+      if (house) {
+        house.loaiNha = String(modelName || 'Biệt Thự Hiện Đại');
+        house.moHinhNgoaiThat = String(modelId || 'minimalist');
+        if (wallColor) house.mauTuong = String(wallColor);
+        if (roofColor) house.mauMai = String(roofColor);
+        await house.save();
+      }
+
+      return NextResponse.json({
+        thanhCong: true,
+        tien: user.tien,
+        diemKinhNghiem: user.diemKinhNghiem,
+        loaiNha: house?.loaiNha,
+        moHinhNgoaiThat: house?.moHinhNgoaiThat,
+        mauTuong: house?.mauTuong,
+        mauMai: house?.mauMai,
+      });
+    }
+
     // 4. MUA ĐỒ ĂN UỐNG, QUẦN ÁO, XE CỘ TẠI CÁC QUÁN
     if (action === 'buy_shop_item') {
       const { code, price, category, expReward } = body;

@@ -30,6 +30,7 @@ interface BottomDockProps {
   isZenMode: boolean;
   onToggleZenMode: () => void;
   isTimerMinimized?: boolean;
+  unreadCount?: number;
 }
 
 export default function BottomDock({
@@ -40,6 +41,7 @@ export default function BottomDock({
   isZenMode,
   onToggleZenMode,
   isTimerMinimized,
+  unreadCount = 0,
 }: BottomDockProps) {
   const router = useRouter();
 
@@ -130,6 +132,7 @@ export default function BottomDock({
         {/* Widgets Toggles */}
         {dockItems.map((item) => {
           const isTimer = item.id === 'timer';
+          const isChat = item.id === 'chat';
           const isWidgetOpen = activeWidgets.has(item.id);
           const isMinimized = isTimer && isTimerMinimized;
           const isActive = isWidgetOpen && !isMinimized;
@@ -137,11 +140,44 @@ export default function BottomDock({
           let tooltipTitle = item.label;
           if (isTimer && isWidgetOpen && isMinimized) {
             tooltipTitle = 'Pomodoro Timer (Đang chạy ngầm - Nhấp để hiện)';
+          } else if (isChat && unreadCount > 0 && !isActive) {
+            tooltipTitle = `Room Members & Chat (${unreadCount} tin nhắn mới)`;
           }
 
           return (
             <Tooltip key={item.id} title={tooltipTitle} placement="top">
               <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                {isChat && unreadCount > 0 && !isActive && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: -6,
+                      right: -4,
+                      zIndex: 2,
+                      backgroundColor: '#ef4444',
+                      color: '#ffffff',
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      minWidth: 18,
+                      height: 18,
+                      borderRadius: '999px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      px: 0.5,
+                      boxShadow: '0 0 10px rgba(239, 68, 68, 0.8)',
+                      border: '1.5px solid #0f172a',
+                      animation: 'pulse 1.8s infinite',
+                      '@keyframes pulse': {
+                        '0%': { transform: 'scale(1)' },
+                        '50%': { transform: 'scale(1.15)' },
+                        '100%': { transform: 'scale(1)' },
+                      },
+                    }}
+                  >
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Box>
+                )}
                 <IconButton
                   onClick={() => onToggleWidget(item.id)}
                   sx={{

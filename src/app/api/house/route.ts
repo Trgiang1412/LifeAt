@@ -42,7 +42,7 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { tenNha, mauTuong, mauMai, randomizePlot } = body;
+    const { tenNha, mauTuong, mauMai, loaiNha, moHinhNgoaiThat, randomizePlot } = body;
 
     await connectToDatabase();
     if (randomizePlot) {
@@ -64,6 +64,8 @@ export async function PATCH(request: Request) {
         ...(tenNha ? { tenNha } : {}),
         ...(mauTuong ? { mauTuong } : {}),
         ...(mauMai ? { mauMai } : {}),
+        ...(loaiNha ? { loaiNha } : {}),
+        ...(moHinhNgoaiThat ? { moHinhNgoaiThat } : {}),
       },
       { new: true }
     );

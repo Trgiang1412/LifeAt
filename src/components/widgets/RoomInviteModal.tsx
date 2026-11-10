@@ -175,8 +175,8 @@ export default function RoomInviteModal({
       const res = await fetch(`/api/room/resolve?target=${encodeURIComponent(joinInput.trim())}`);
       const data = await res.json();
 
-      if (!res.ok || !data.roomUrl) {
-        setJoinError(data.message || 'Link hoặc mã phòng không hợp lệ.');
+      if (!res.ok || !data.success || !data.roomUrl) {
+        setJoinError(data.message || 'Mã phòng hoặc link phòng không tồn tại. Vui lòng kiểm tra lại!');
       } else {
         onClose();
         router.push(data.roomUrl);
@@ -214,7 +214,7 @@ export default function RoomInviteModal({
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: 4,
+          borderRadius: 2,
           backgroundColor: 'rgba(15, 23, 42, 0.96)',
           backdropFilter: 'blur(30px)',
           border: '1px solid rgba(255, 255, 255, 0.15)',

@@ -78,6 +78,7 @@ function EnglishWorldContent() {
   const [currentNode, setCurrentNode] = useState<DialogueNodeData | null>(null);
   const [loadingDialogue, setLoadingDialogue] = useState(false);
   const [submittingOption, setSubmittingOption] = useState(false);
+  const [isReturning, setIsReturning] = useState(false);
   const [feedback, setFeedback] = useState<{
     success: boolean;
     message: string;
@@ -85,6 +86,13 @@ function EnglishWorldContent() {
     coins: number;
     exp: number;
   } | null>(null);
+
+  // Xử lý quay lại phòng học tức thì, giải phóng sạch sẽ WebGL / WASM memory
+  const handleReturnToRoom = () => {
+    if (isReturning) return;
+    setIsReturning(true);
+    window.location.assign('/');
+  };
 
   // Load dialogue on mount
   const loadDialogue = async () => {
@@ -199,22 +207,43 @@ function EnglishWorldContent() {
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
-            <Button
-              size="small"
-              startIcon={<ArrowBackRoundedIcon />}
-              sx={{
-                color: '#94a3b8',
-                borderRadius: 2,
-                fontSize: '0.82rem',
-                textTransform: 'none',
-                fontWeight: 600,
-                '&:hover': { color: '#f8fafc', backgroundColor: 'rgba(255, 255, 255, 0.08)' },
-              }}
-            >
-              Quay lại phòng học
-            </Button>
-          </Link>
+          <Button
+            size="small"
+            onClick={handleReturnToRoom}
+            disabled={isReturning}
+            startIcon={
+              isReturning ? (
+                <CircularProgress size={14} sx={{ color: '#38bdf8' }} />
+              ) : (
+                <ArrowBackRoundedIcon />
+              )
+            }
+            sx={{
+              color: isReturning ? '#38bdf8' : '#e2e8f0',
+              backgroundColor: isReturning ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+              border: isReturning ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: 2,
+              fontSize: '0.82rem',
+              textTransform: 'none',
+              fontWeight: 700,
+              px: 1.6,
+              py: 0.6,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+              transition: 'all 0.15s ease',
+              '&:hover': {
+                color: '#ffffff',
+                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                borderColor: 'rgba(255, 255, 255, 0.25)',
+                transform: 'translateY(-1px)',
+              },
+              '&.Mui-disabled': {
+                color: '#38bdf8',
+                borderColor: 'rgba(56, 189, 248, 0.45)',
+              },
+            }}
+          >
+            {isReturning ? 'Đang chuyển về phòng...' : 'Quay lại phòng học'}
+          </Button>
 
           <Box sx={{ height: 20, width: '1px', backgroundColor: 'rgba(255, 255, 255, 0.15)' }} />
 

@@ -1,12 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { Box, Typography, Button } from '@mui/material';
 
 export default function NotFound() {
   return (
-    <Box
-      sx={{
+    <div
+      style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -14,24 +13,25 @@ export default function NotFound() {
         height: '100vh',
         backgroundColor: '#090a0f',
         color: '#f8fafc',
-        gap: 2,
+        gap: '16px',
+        fontFamily: 'sans-serif',
       }}
     >
-      <Typography variant="h3" sx={{ fontWeight: 800, color: '#818cf8' }}>
-        404
-      </Typography>
-      <Typography variant="h6">Không tìm thấy phòng này</Typography>
-      <Button
-        component={Link}
+      <h1 style={{ fontWeight: 800, color: '#818cf8', fontSize: '48px', margin: 0 }}>404</h1>
+      <h2 style={{ margin: 0 }}>Không tìm thấy phòng này</h2>
+      <Link
         href="/"
-        variant="contained"
-        sx={{
+        style={{
           backgroundColor: '#6366f1',
-          '&:hover': { backgroundColor: '#4f46e5' },
+          color: '#ffffff',
+          padding: '10px 20px',
+          borderRadius: '8px',
+          textDecoration: 'none',
+          fontWeight: 700,
         }}
       >
         Về phòng mặc định
-      </Button>
-    </Box>
+      </Link>
+    </div>
   );
 }

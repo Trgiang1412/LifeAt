@@ -17,6 +17,7 @@ interface WidgetsContainerProps {
   onCloseWidget: (w: ActiveWidget) => void;
   isTimerMinimized?: boolean;
   onMinimizeTimer?: () => void;
+  onPomodoroTimeChange?: (timeString: string, isRunning: boolean) => void;
   settings: PomodoroSettings;
   hostName: string;
   roomCode: string;
@@ -53,6 +54,7 @@ export default function WidgetsContainer({
   onCloseWidget,
   isTimerMinimized,
   onMinimizeTimer,
+  onPomodoroTimeChange,
   settings,
   hostName,
   roomCode,
@@ -94,6 +96,7 @@ export default function WidgetsContainer({
           <PomodoroWidget
             onClose={() => onCloseWidget('timer')}
             onMinimize={onMinimizeTimer}
+            onTimeChange={onPomodoroTimeChange}
             settings={settings}
             isHost={isHost}
             hostName={hostName}
@@ -172,7 +175,7 @@ export default function WidgetsContainer({
           zIndex={zIndices.calendar || 20}
           onBringToFront={bringToFront}
         >
-          <CalendarWidget onClose={() => onCloseWidget('calendar')} />
+          <CalendarWidget onClose={() => onCloseWidget('calendar')} roomCode={roomCode} />
         </DraggableWidgetWrapper>
       )}
     </Box>

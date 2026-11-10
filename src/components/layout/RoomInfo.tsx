@@ -13,6 +13,7 @@ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded';
 import ExitToAppRoundedIcon from '@mui/icons-material/ExitToAppRounded';
 import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded';
+import TimerRoundedIcon from '@mui/icons-material/TimerRounded';
 import { useAuth } from '@/context/AuthContext';
 
 const AVATAR_POOL = [
@@ -33,6 +34,8 @@ interface RoomInfoProps {
   isHost?: boolean;
   onLeaveRoom?: () => void;
   participantCount?: number;
+  pomodoroMinimizedTime?: string | null;
+  onRestoreTimer?: () => void;
 }
 
 export default function RoomInfo({
@@ -42,6 +45,8 @@ export default function RoomInfo({
   isHost = true,
   onLeaveRoom,
   participantCount = 1,
+  pomodoroMinimizedTime,
+  onRestoreTimer,
 }: RoomInfoProps) {
   const { user } = useAuth();
 
@@ -123,6 +128,34 @@ export default function RoomInfo({
         )}
       </Box>
 
+      {/* Đồng hồ Pomodoro thu nhỏ ở góc trái khi bị ẩn */}
+      {pomodoroMinimizedTime && (
+        <Tooltip title="Đồng hồ Pomodoro đang chạy (Nhấp để mở lại)">
+          <Chip
+            size="small"
+            icon={<TimerRoundedIcon sx={{ fontSize: '14px !important', color: '#818cf8 !important' }} />}
+            label={pomodoroMinimizedTime}
+            onClick={onRestoreTimer}
+            sx={{
+              backgroundColor: 'rgba(99, 102, 241, 0.25)',
+              border: '1.5px solid rgba(129, 140, 248, 0.6)',
+              color: '#f8fafc',
+              fontWeight: 800,
+              fontFamily: 'monospace',
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              boxShadow: '0 0 12px rgba(99, 102, 241, 0.4)',
+              transition: 'all 0.2s',
+              '&:hover': {
+                backgroundColor: 'rgba(99, 102, 241, 0.45)',
+                transform: 'scale(1.05)',
+                borderColor: '#818cf8',
+              },
+            }}
+          />
+        </Tooltip>
+      )}
+
       {/* Space Code Pill */}
       <Tooltip title="Mã phòng hiện tại">
         <Chip
@@ -145,7 +178,7 @@ export default function RoomInfo({
       </Tooltip>
 
       {/* Nút Mời bạn bè */}
-      <Tooltip title="Mời bạn bè hoặc dán link vào phòng">
+      {/* <Tooltip title="Mời bạn bè hoặc dán link vào phòng">
         <Chip
           size="small"
           icon={<PersonAddAlt1RoundedIcon sx={{ fontSize: '13px !important', color: '#38bdf8 !important' }} />}
@@ -163,7 +196,7 @@ export default function RoomInfo({
             },
           }}
         />
-      </Tooltip>
+      </Tooltip> */}
 
       {/* Action Rời phòng cho Khách */}
       {!isHost && onLeaveRoom && (

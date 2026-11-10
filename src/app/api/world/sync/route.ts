@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { HOUSE_PLOTS, pickRandomAvailablePlot } from '@/data/housePlots';
+import type { WorldVehicleType } from '@/data/worldGameplayData';
 
 export interface ActiveWorldPlayer {
   id: string; // clientId duy nhất cho mỗi tab/phiên người dùng
@@ -11,7 +12,7 @@ export interface ActiveWorldPlayer {
   z: number;
   rotationY: number;
   isSkateboarding?: boolean;
-  activeVehicle?: 'none' | 'skateboard' | 'vespa' | 'motorbike' | 'sportscar';
+  activeVehicle?: WorldVehicleType;
   isFishing?: boolean;
   currentEmote?: string | null;
   currentChat?: string;
@@ -160,7 +161,7 @@ export async function POST(request: Request) {
       avatarColor: avatarColor || existing?.avatarColor || '#38bdf8',
       x: typeof x === 'number' ? x : existing?.x ?? 0,
       y: typeof y === 'number' ? y : existing?.y ?? 1.2,
-      z: typeof z === 'number' ? z : existing?.z ?? 5,
+      z: typeof z === 'number' ? z : existing?.z ?? 11.5,
       rotationY: typeof rotationY === 'number' ? rotationY : existing?.rotationY ?? 0,
       isSkateboarding: Boolean(isSkateboarding),
       activeVehicle: activeVehicle || existing?.activeVehicle || (isSkateboarding ? 'skateboard' : 'none'),

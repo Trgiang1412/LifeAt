@@ -6,6 +6,13 @@ import RoomInvitationListener from '@/components/layout/RoomInvitationListener';
 export const metadata: Metadata = {
   title: "LifeAt Spaces - Virtual Coworking & Study Room",
   description: "Immersive virtual focus spaces with Pomodoro timer, ambient soundscapes, lofi beats, and co-working features.",
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
@@ -17,6 +24,9 @@ export default function RootLayout({
     <html lang="vi">
       <head>
         <meta name="viewport" content="initial-scale=1, width=device-width" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/favicon.svg" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

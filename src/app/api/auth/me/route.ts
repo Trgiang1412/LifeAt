@@ -48,6 +48,7 @@ export async function GET(request: Request) {
         trinhDoTiengAnh: user.trinhDoTiengAnh || 'A1',
         tuiDo: user.tuiDo || [],
         nhaNguoiChoi,
+        cauHinh: user.cauHinh || [],
       },
     });
   } catch (error: any) {

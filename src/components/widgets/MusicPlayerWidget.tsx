@@ -78,7 +78,7 @@ export default function MusicPlayerWidget({ onClose }: MusicPlayerWidgetProps) {
       elevation={8}
       sx={{
         width: 320,
-        borderRadius: 4,
+        borderRadius: 2,
         background: 'rgba(15, 23, 42, 0.85)',
         backdropFilter: 'blur(24px)',
         border: '1px solid rgba(255, 255, 255, 0.12)',

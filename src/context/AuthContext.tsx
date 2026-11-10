@@ -32,6 +32,7 @@ export interface AuthUser {
   trinhDoTiengAnh?: string;
   tuiDo?: Array<{ maVatPham: string; loaiVatPham: string; soLuong: number }>;
   nhaNguoiChoi?: PlayerHouseData;
+  cauHinh?: any[];
 }
 
 export function getDefaultHouseForUser(tenDangNhap: string = 'Bạn'): PlayerHouseData {

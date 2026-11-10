@@ -14,6 +14,7 @@ import {
   getNearbyStreetNpcId,
   setNearbyStreetNpcId,
 } from '@/stores/useMultiplayerStore';
+import { FashionAvatar } from './FashionAvatar';
 
 // ============================================================================
 // KHỞI TẠO BIẾN DÙNG CHUNG BÊN NGOÀI ĐỂ TRIỆT TIÊU GC SPIKE Ở 60-120 FPS
@@ -129,7 +130,7 @@ export default function NPC({
         }}
       />
 
-      {/* 3. 3D Model NPC (Stylized Barista / Emma) */}
+      {/* 3. 3D Model NPC phong cách Thời Trang Cao Cấp (FashionAvatar) */}
       <group
         ref={avatarGroupRef}
         onClick={(e) => {
@@ -137,45 +138,19 @@ export default function NPC({
           onInteract();
         }}
       >
-        {/* Bóng đổ tròn dưới chân */}
-        <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.35, 16]} />
-          <meshBasicMaterial color="#000000" opacity={0.35} transparent />
-        </mesh>
-
-        {/* Thân NPC (Váy / Tạp dề Barista) */}
-        <mesh position={[0, 0.58, 0]} castShadow>
-          <cylinderGeometry args={[0.26, 0.34, 0.75, 16]} />
-          <meshStandardMaterial color="#475569" roughness={0.7} />
-        </mesh>
-
-        {/* Tạp dề màu nâu ấm */}
-        <mesh position={[0, 0.54, 0.08]} castShadow>
-          <boxGeometry args={[0.28, 0.5, 0.2]} />
-          <meshStandardMaterial color="#92400e" roughness={0.6} />
-        </mesh>
-
-        {/* Đầu & Mặt NPC */}
-        <mesh position={[0, 1.15, 0]} castShadow>
-          <sphereGeometry args={[0.23, 16, 16]} />
-          <meshStandardMaterial color="#fed7aa" roughness={0.5} />
-        </mesh>
-
-        {/* Tóc phong cách bồng bềnh */}
-        <mesh position={[0, 1.25, -0.04]} castShadow>
-          <sphereGeometry args={[0.25, 16, 16]} />
-          <meshStandardMaterial color="#7c2d12" roughness={0.8} />
-        </mesh>
-
-        {/* Cốc cafe trên tay */}
-        <mesh position={[0.24, 0.72, 0.22]} castShadow>
-          <cylinderGeometry args={[0.06, 0.045, 0.12, 12]} />
-          <meshStandardMaterial color="#fafaf9" roughness={0.3} />
-        </mesh>
+        <FashionAvatar
+          outfitColor={badgeColor}
+          hatColor="#f8fafc"
+          avatarStyle="suit"
+          hatStyle="beret"
+          accessory="crossbody_bag"
+          scale={1.32}
+          isNpc={true}
+        />
       </group>
 
       {/* 
-        4. 3D Tooltip Html: Hiển thị tên NPC & hướng dẫn tương tác [E]
+        4. 3D Tooltip Html gọn nhẹ: Chỉ hiện nút [E] khi đứng gần
       */}
       <Html
         position={[_vTooltipPos.x, _vTooltipPos.y, _vTooltipPos.z]}
@@ -186,87 +161,50 @@ export default function NPC({
         {isInRange ? (
           <div
             style={{
-              display: 'flex',
-              flexDirection: 'column',
+              display: 'inline-flex',
               alignItems: 'center',
-              gap: '4px',
-              animation: 'bounceIn 0.25s ease-out',
+              gap: '6px',
+              padding: '4px 11px',
+              borderRadius: '999px',
+              backgroundColor: 'rgba(15, 23, 42, 0.92)',
+              border: '1.5px solid #38bdf8',
+              boxShadow: '0 6px 18px rgba(0, 0, 0, 0.45)',
+              color: '#ffffff',
+              fontFamily: 'system-ui, sans-serif',
+              whiteSpace: 'nowrap',
             }}
           >
-            {/* Hộp thoại thông tin NPC */}
-            <div
+            <span
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '6px 14px',
-                borderRadius: '20px',
-                backgroundColor: 'rgba(15, 23, 42, 0.92)',
-                backdropFilter: 'blur(12px)',
-                border: '1.5px solid rgba(56, 189, 248, 0.4)',
-                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
-                color: '#ffffff',
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                whiteSpace: 'nowrap',
+                padding: '1px 6px',
+                borderRadius: '5px',
+                backgroundColor: '#38bdf8',
+                color: '#0f172a',
+                fontWeight: 900,
+                fontSize: '11px',
               }}
             >
-              {/* Phím bấm [E] nổi bật */}
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '24px',
-                  height: '24px',
-                  borderRadius: '6px',
-                  backgroundColor: '#38bdf8',
-                  color: '#0f172a',
-                  fontWeight: 800,
-                  fontSize: '13px',
-                  boxShadow: '0 2px 8px rgba(56, 189, 248, 0.4)',
-                }}
-              >
-                E
-              </span>
-
-              {/* Text hướng dẫn */}
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
-                  Nhấn [E] trò chuyện cùng {name}
-                </span>
-                <span style={{ fontSize: '10px', color: badgeColor, fontWeight: 600 }}>
-                  {role}
-                </span>
-              </div>
-            </div>
-
-            {/* Mũi tên trỏ xuống đầu NPC */}
-            <div
-              style={{
-                width: 0,
-                height: 0,
-                borderLeft: '6px solid transparent',
-                borderRight: '6px solid transparent',
-                borderTop: '6px solid rgba(56, 189, 248, 0.9)',
-              }}
-            />
+              E
+            </span>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#f8fafc' }}>
+              {name}
+            </span>
           </div>
         ) : (
           <div
             style={{
-              padding: '3px 10px',
-              borderRadius: '14px',
-              backgroundColor: 'rgba(15, 23, 42, 0.82)',
-              border: `1.5px solid ${badgeColor}`,
-              color: '#ffffff',
-              fontSize: '11px',
-              fontWeight: 800,
+              padding: '2px 8px',
+              borderRadius: '999px',
+              backgroundColor: 'rgba(15, 23, 42, 0.72)',
+              border: `1px solid ${badgeColor}`,
+              color: '#f8fafc',
+              fontSize: '10px',
+              fontWeight: 700,
               whiteSpace: 'nowrap',
               fontFamily: 'system-ui, sans-serif',
-              boxShadow: '0 4px 10px rgba(0,0,0,0.4)',
             }}
           >
-            💬 {name}
+            {name}
           </div>
         )}
       </Html>

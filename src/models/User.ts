@@ -27,6 +27,7 @@ export interface IUser extends Document {
   danhSachCoNhiemVu: string[];
   tuiDo: ITuiDoItem[];
   thongKeNhiemVu: IThongKeNhiemVu;
+  cauHinh: any[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -131,6 +132,10 @@ const UserSchema: Schema<IUser> = new Schema(
         soHoiThoaiThanhCong: 0,
         tongDiemKinhNghiemTichLuy: 0,
       }),
+    },
+    cauHinh: {
+      type: [Schema.Types.Mixed] as any,
+      default: [],
     },
   },
   {

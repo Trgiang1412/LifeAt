@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { io, Socket } from 'socket.io-client';
+import type { WorldVehicleType } from '@/data/worldGameplayData';
 
 export interface RemotePlayerData {
   id: string;
@@ -14,13 +15,14 @@ export interface RemotePlayerData {
   rotationY: number;
   avatarColor: string;
   isSkateboarding?: boolean;
-  activeVehicle?: 'none' | 'skateboard' | 'vespa' | 'motorbike' | 'sportscar';
+  activeVehicle?: WorldVehicleType;
   isFishing?: boolean;
   currentEmote?: string | null;
   maLoDat?: string;
   houseTitle?: string;
   houseWallColor?: string;
   houseRoofColor?: string;
+  houseStyle?: string;
   houseFurniture?: Array<{
     maVatPham: string;
     tenVatPham?: string;
@@ -48,6 +50,7 @@ export interface LocalPlayerProfile {
   houseTitle: string;
   houseWallColor: string;
   houseRoofColor: string;
+  houseStyle?: string;
   houseFurniture?: Array<{
     maVatPham: string;
     tenVatPham?: string;
@@ -78,7 +81,7 @@ export interface MultiplayerState {
     rotationY: number,
     extra?: {
       isSkateboarding?: boolean;
-      activeVehicle?: 'none' | 'skateboard' | 'vespa' | 'motorbike' | 'sportscar';
+      activeVehicle?: WorldVehicleType;
       isFishing?: boolean;
       currentEmote?: string | null;
     }
@@ -118,15 +121,15 @@ let lastSendTime = 0;
 const THROTTLE_MS = 50;
 let syncIntervalId: ReturnType<typeof setInterval> | null = null;
 
-// Lưu tọa độ hiện tại của local player để đồng bộ qua cả Socket.io và HTTP Sync
+// Lưu tọa độ hiện tại của local player để đồng bộ qua cả Socket.io và HTTP Sync (Mặc định ở lối đi dạo quảng trường)
 const localState = {
   x: 0,
   y: 1.2,
-  z: 5,
+  z: 11.5,
   rotationY: 0,
   nearbyStreetNpcId: null as string | null,
   isSkateboarding: false,
-  activeVehicle: 'none' as 'none' | 'skateboard' | 'vespa' | 'motorbike' | 'sportscar',
+  activeVehicle: 'none' as WorldVehicleType,
   isFishing: false,
   currentEmote: null as string | null,
   profile: {
@@ -137,6 +140,7 @@ const localState = {
     houseTitle: 'Nhà Cấp 4',
     houseWallColor: '#f5ebd6',
     houseRoofColor: '#b93829',
+    houseStyle: 'traditional',
     houseFurniture: undefined as
       | Array<{
           maVatPham: string;
@@ -267,6 +271,7 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
             houseTitle: localState.profile.houseTitle,
             houseWallColor: localState.profile.houseWallColor,
             houseRoofColor: localState.profile.houseRoofColor,
+            houseStyle: localState.profile.houseStyle,
             houseFurniture: localState.profile.houseFurniture,
             newChatText: chatToSend || undefined,
           }),

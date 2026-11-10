@@ -25,8 +25,8 @@ const DEFAULT_SETTINGS: PomodoroSettings = {
   shortBreakTime: 5,
   longBreakTime: 15,
   longBreakInterval: 4,
-  autoStartBreaks: false,
-  autoStartPomodoros: false,
+  autoStartBreaks: true,
+  autoStartPomodoros: true,
 };
 
 export default function RoomClient({
@@ -35,18 +35,75 @@ export default function RoomClient({
   initialHost = "Trường's Room",
 }: RoomClientProps) {
   const router = useRouter();
-  const { user, token } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const [currentSpace, setCurrentSpace] = useState<Space>(SPACES_DATA[0]);
   const [activeWidgets, setActiveWidgets] = useState<Set<ActiveWidget>>(new Set(['timer']));
   const [isTimerMinimized, setIsTimerMinimized] = useState<boolean>(false);
+  const [timerDisplayString, setTimerDisplayString] = useState<string>('25:00');
+  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const isTimerMinimizedRef = useRef(isTimerMinimized);
   isTimerMinimizedRef.current = isTimerMinimized;
   const activeWidgetsRef = useRef(activeWidgets);
   activeWidgetsRef.current = activeWidgets;
+  const [unreadChatCount, setUnreadChatCount] = useState<number>(0);
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
   const [isSpacesOpen, setIsSpacesOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [settings, setSettings] = useState<PomodoroSettings>(DEFAULT_SETTINGS);
+
+  // Lấy cài đặt cấu hình người dùng từ Model User trong Database (không lưu trên local)
+  useEffect(() => {
+    if (user?.cauHinh && Array.isArray(user.cauHinh) && user.cauHinh.length > 0) {
+      const pomodoroCfg =
+        user.cauHinh.find((it: any) => it?.loai === 'pomodoro' || it?.pomodoroTime !== undefined) ||
+        user.cauHinh[0];
+      if (pomodoroCfg && typeof pomodoroCfg.pomodoroTime === 'number') {
+        setSettings({
+          pomodoroTime: pomodoroCfg.pomodoroTime ?? DEFAULT_SETTINGS.pomodoroTime,
+          shortBreakTime: pomodoroCfg.shortBreakTime ?? DEFAULT_SETTINGS.shortBreakTime,
+          longBreakTime: pomodoroCfg.longBreakTime ?? DEFAULT_SETTINGS.longBreakTime,
+          longBreakInterval: pomodoroCfg.longBreakInterval ?? DEFAULT_SETTINGS.longBreakInterval,
+          autoStartBreaks: pomodoroCfg.autoStartBreaks ?? DEFAULT_SETTINGS.autoStartBreaks,
+          autoStartPomodoros: pomodoroCfg.autoStartPomodoros ?? DEFAULT_SETTINGS.autoStartPomodoros,
+        });
+      }
+    }
+  }, [user?.cauHinh]);
+
+  // Lưu cài đặt vào Model User qua API /api/user/cauhinh (không lưu trên local)
+  const handleSaveSettings = async (newSettings: PomodoroSettings) => {
+    setSettings(newSettings);
+
+    if (token) {
+      try {
+        const payloadItem = {
+          loai: 'pomodoro',
+          pomodoroTime: newSettings.pomodoroTime,
+          shortBreakTime: newSettings.shortBreakTime,
+          longBreakTime: newSettings.longBreakTime,
+          longBreakInterval: newSettings.longBreakInterval,
+          autoStartBreaks: newSettings.autoStartBreaks,
+          autoStartPomodoros: newSettings.autoStartPomodoros,
+          capNhatLuc: new Date().toISOString(),
+        };
+
+        const res = await fetch('/api/user/cauhinh', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ cauHinh: [payloadItem] }),
+        });
+
+        if (res.ok) {
+          refreshUser?.();
+        }
+      } catch (err) {
+        console.error('Lỗi khi lưu cấu hình user lên database qua API:', err);
+      }
+    }
+  };
 
   // Nếu có thông tin phòng cụ thể (khi được mời hoặc dán link vào phòng người khác)
   const isVisitingSpecificRoom = Boolean(
@@ -121,12 +178,27 @@ export default function RoomClient({
 
       socket.on('roomSpaceChanged', handleRemoteSpace);
       socket.on(`roomSpaceChanged_${effectiveCode}`, handleRemoteSpace);
+
+      // Lắng nghe tin nhắn mới để hiện số badge tin nhắn trên icon dock
+      const handleIncomingChat = (msg: any) => {
+        if (!msg) return;
+        if (msg.roomCode && msg.roomCode !== effectiveCode) return;
+        // Nếu chat widget đang KHÔNG mở -> tăng unreadCount
+        if (!activeWidgetsRef.current.has('chat')) {
+          setUnreadChatCount((prev) => prev + 1);
+        }
+      };
+
+      socket.on('roomChatMessage', handleIncomingChat);
+      socket.on(`roomChatMessage_${effectiveCode}`, handleIncomingChat);
     } catch {}
 
     return () => {
       if (socket) {
         socket.off('roomSpaceChanged');
         socket.off(`roomSpaceChanged_${effectiveCode}`);
+        socket.off('roomChatMessage');
+        socket.off(`roomChatMessage_${effectiveCode}`);
         socket.disconnect();
       }
     };
@@ -153,6 +225,9 @@ export default function RoomClient({
       router.push('/');
     }
   }, [effectiveCode, token, user, router]);
+
+  // Ref theo dõi số lượng tin nhắn DB để tính unread khi chat widget đóng
+  const lastKnownDbChatCountRef = useRef<number>(-1);
 
   // Đồng bộ trạng thái phòng (Nhạc, Không gian, Đồng hồ Pomodoro, Thành viên)
   useEffect(() => {
@@ -231,15 +306,39 @@ export default function RoomClient({
       }
     };
 
-    // Khởi tạo ngay
+    // 1. Đồng bộ trạng thái phòng
     syncRoom();
-
-    // Chu kỳ polling mỗi 2.5 giây
     const interval = setInterval(syncRoom, 2500);
+
+    // 2. Đồng bộ tin nhắn định kỳ để cập nhật badge tin nhắn chưa đọc ngay cả khi socket không kích hoạt
+    const syncUnreadChat = async () => {
+      try {
+        const res = await fetch(`/api/room/chat?roomCode=${encodeURIComponent(effectiveCode)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.messages && Array.isArray(data.messages)) {
+          const totalMsgs = data.messages.length;
+          if (lastKnownDbChatCountRef.current === -1) {
+            // Lần đầu vào phòng: khởi tạo mốc tin nhắn
+            lastKnownDbChatCountRef.current = totalMsgs;
+          } else if (totalMsgs > lastKnownDbChatCountRef.current) {
+            const newCount = totalMsgs - lastKnownDbChatCountRef.current;
+            lastKnownDbChatCountRef.current = totalMsgs;
+            if (!activeWidgetsRef.current.has('chat')) {
+              setUnreadChatCount((prev) => prev + newCount);
+            }
+          }
+        }
+      } catch {}
+    };
+
+    syncUnreadChat();
+    const chatInterval = setInterval(syncUnreadChat, 2000);
 
     return () => {
       isMounted = false;
       clearInterval(interval);
+      clearInterval(chatInterval);
     };
   }, [effectiveCode, token, isActuallyHost, user, currentSpace, effectiveHost]);
 
@@ -301,6 +400,14 @@ export default function RoomClient({
 
   // Toggle widget in set
   const toggleWidget = useCallback((w: ActiveWidget) => {
+    if (w === 'chat') {
+      const isOpen = activeWidgetsRef.current.has('chat');
+      if (!isOpen) {
+        // Mở chat -> xóa sạch badge tin nhắn chưa đọc
+        setUnreadChatCount(0);
+      }
+    }
+
     if (w === 'timer') {
       const isOpen = activeWidgetsRef.current.has('timer');
       const isMin = isTimerMinimizedRef.current;
@@ -382,6 +489,12 @@ export default function RoomClient({
         isHost={isActuallyHost}
         onLeaveRoom={handleLeaveRoom}
         participantCount={participantCount}
+        pomodoroMinimizedTime={
+          activeWidgets.has('timer') && isTimerMinimized
+            ? `${isTimerRunning ? '⏱️' : '⏸️'} ${timerDisplayString}`
+            : null
+        }
+        onRestoreTimer={() => setIsTimerMinimized(false)}
       />
 
       {/* Floating Productivity Widgets */}
@@ -390,6 +503,10 @@ export default function RoomClient({
         onCloseWidget={closeWidget}
         isTimerMinimized={isTimerMinimized}
         onMinimizeTimer={() => setIsTimerMinimized(true)}
+        onPomodoroTimeChange={(timeStr, isRunning) => {
+          setTimerDisplayString(timeStr);
+          setIsTimerRunning(isRunning);
+        }}
         settings={settings}
         hostName={isActuallyHost ? effectiveHost : hostRoomName}
         roomCode={effectiveCode}
@@ -410,6 +527,7 @@ export default function RoomClient({
         onOpenSettings={() => setIsSettingsOpen(true)}
         isZenMode={isZenMode}
         onToggleZenMode={() => setIsZenMode(!isZenMode)}
+        unreadCount={unreadChatCount}
       />
 
       {/* Spaces Background Switcher Modal */}
@@ -427,7 +545,7 @@ export default function RoomClient({
         open={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
-        onSaveSettings={(newSettings) => setSettings(newSettings)}
+        onSaveSettings={handleSaveSettings}
       />
     </Box>
   );
