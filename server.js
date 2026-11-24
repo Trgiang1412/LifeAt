@@ -172,39 +172,45 @@ app.prepare().then(() => {
       const userId = data?.userId || socket.id;
       const userName = data?.userName || 'Anonymous';
       const isHost = Boolean(data?.isHost);
+      const isWebRtcClient = Boolean(data?.isWebRtcClient || (data?.userName && data?.userName !== 'Anonymous'));
 
       if (roomCode) {
         socket.join(`room_${roomCode}`);
         socket.currentRoomCode = roomCode;
         socket.currentUserId = userId;
         socket.currentUserName = userName;
+        socket.isWebRtcClient = isWebRtcClient;
 
-        if (!roomMembers.has(roomCode)) {
-          roomMembers.set(roomCode, new Map());
+        if (isWebRtcClient) {
+          if (!roomMembers.has(roomCode)) {
+            roomMembers.set(roomCode, new Map());
+          }
+          const members = roomMembers.get(roomCode);
+
+          // Gửi danh sách các WebRTC peer đang có trong phòng cho người mới
+          const existingPeers = Array.from(members.values()).filter((p) => p.socketId !== socket.id);
+          socket.emit('roomPeerList', existingPeers);
+
+          // Đăng ký người mới vào danh sách WebRTC peer
+          members.set(socket.id, {
+            socketId: socket.id,
+            userId,
+            userName,
+            isHost,
+          });
+
+          // Báo cho các bạn học khác trong phòng
+          socket.to(`room_${roomCode}`).emit('peerJoined', {
+            socketId: socket.id,
+            userId,
+            userName,
+            isHost,
+          });
+
+          console.log(`[Socket.io WebRTC] ${userName} (${socket.id}) đã tham gia WebRTC Hub trong room_${roomCode}. Phòng hiện có: ${members.size} peer(s).`);
+        } else {
+          console.log(`[Socket.io Sync] ${userName} (${socket.id}) đã đồng bộ room_${roomCode}.`);
         }
-        const members = roomMembers.get(roomCode);
-
-        // Gửi danh sách các peer đang có trong phòng cho người mới
-        const existingPeers = Array.from(members.values()).filter((p) => p.socketId !== socket.id);
-        socket.emit('roomPeerList', existingPeers);
-
-        // Đăng ký người mới vào phòng
-        members.set(socket.id, {
-          socketId: socket.id,
-          userId,
-          userName,
-          isHost,
-        });
-
-        // Báo cho các bạn học khác trong phòng
-        socket.to(`room_${roomCode}`).emit('peerJoined', {
-          socketId: socket.id,
-          userId,
-          userName,
-          isHost,
-        });
-
-        console.log(`[Socket.io] ${userName} (${socket.id}) đã vào room_${roomCode}. Phòng hiện có: ${members.size} người.`);
       }
     });
 

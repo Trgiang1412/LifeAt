@@ -415,28 +415,6 @@ function ParkTicketKiosk({
         <boxGeometry args={[2.3, 0.42, 0.18]} />
         <meshStandardMaterial color="#1e1b4b" />
       </mesh>
-      <Html position={[0, 3.65, 0]} center>
-        <div
-          onClick={(e) => {
-            e.stopPropagation();
-            onClickOpenMenu?.();
-          }}
-          style={{
-            background: 'linear-gradient(135deg, #f59e0b, #ea580c)',
-            color: '#fff',
-            padding: '3px 10px',
-            borderRadius: '999px',
-            fontSize: '10px',
-            fontWeight: 900,
-            whiteSpace: 'nowrap',
-            cursor: 'pointer',
-            border: '1.5px solid #fef08a',
-            boxShadow: '0 4px 12px rgba(234,88,12,0.5)',
-          }}
-        >
-          🎟️ {title} (Bấm mua vé)
-        </div>
-      </Html>
     </group>
   );
 }
@@ -536,28 +514,6 @@ export function DetailedSmilePlaygroundPark({
           <boxGeometry args={[4.3, 0.65, 0.06]} />
           <meshStandardMaterial color="#f59e0b" emissive="#d97706" emissiveIntensity={0.6} />
         </mesh>
-        <Html position={[0, 5.15, 0]} center>
-          <div
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenParkMenu?.();
-            }}
-            style={{
-              background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-              color: '#fef08a',
-              padding: '4px 12px',
-              borderRadius: '999px',
-              fontSize: '10.5px',
-              fontWeight: 900,
-              whiteSpace: 'nowrap',
-              cursor: 'pointer',
-              border: '2px solid #f59e0b',
-              boxShadow: '0 6px 16px rgba(15,23,42,0.65)',
-            }}
-          >
-            🎠 ROYAL SMILE AMUSEMENT PARK • BẤM CHỌN TRÒ CHƠI
-          </div>
-        </Html>
       </group>
 
       {/* QUẦY BÁN VÉ TỰ ĐỘNG NGAY CỔNG */}
@@ -648,24 +604,6 @@ export function DetailedSmilePlaygroundPark({
           <sphereGeometry args={[0.32, 14, 14]} />
           <meshStandardMaterial color="#fbbf24" metalness={0.85} roughness={0.15} />
         </mesh>
-
-        <Html position={[0, 6.65, 0]} center>
-          <div
-            style={{
-              background: 'rgba(15, 23, 42, 0.88)',
-              color: '#fde047',
-              padding: '2px 8px',
-              borderRadius: '999px',
-              fontSize: '10px',
-              fontWeight: 800,
-              border: '1px solid #f59e0b',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            🎠 Đu Quay Ngựa Gỗ • 25 Xu
-          </div>
-        </Html>
       </group>
 
       {/* ================================================================= */}
@@ -749,24 +687,6 @@ export function DetailedSmilePlaygroundPark({
             </group>
           ))}
         </group>
-
-        <Html position={[0, 4.95, 0]} center>
-          <div
-            style={{
-              background: 'rgba(15, 23, 42, 0.88)',
-              color: '#e9d5ff',
-              padding: '2px 8px',
-              borderRadius: '999px',
-              fontSize: '10px',
-              fontWeight: 800,
-              border: '1px solid #a855f7',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            🏎️ Xe Điện Đụng Neon • 30 Xu
-          </div>
-        </Html>
       </group>
 
       {/* ================================================================= */}
@@ -817,24 +737,6 @@ export function DetailedSmilePlaygroundPark({
           <boxGeometry args={[0.22, 3.2, 0.95]} />
           <meshStandardMaterial color="#10b981" roughness={0.25} />
         </mesh>
-
-        <Html position={[0, 5.5, 0]} center>
-          <div
-            style={{
-              background: 'rgba(15, 23, 42, 0.88)',
-              color: '#6ee7b7',
-              padding: '2px 8px',
-              borderRadius: '999px',
-              fontSize: '10px',
-              fontWeight: 800,
-              border: '1px solid #10b981',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            🏰 Lâu Đài Trượt Tốc Độ • 20 Xu
-          </div>
-        </Html>
       </group>
     </group>
   );
@@ -1081,25 +983,6 @@ export function DetailedWonderlandAmusementPark({
             );
           })}
         </group>
-
-        <Html position={[0, 19.2, 0]} center>
-          <div
-            style={{
-              background: 'linear-gradient(135deg, #be185d, #6d28d9)',
-              color: '#ffffff',
-              padding: '4px 12px',
-              borderRadius: '999px',
-              fontSize: '11px',
-              fontWeight: 900,
-              whiteSpace: 'nowrap',
-              cursor: 'pointer',
-              border: '2px solid #fde047',
-              boxShadow: '0 6px 18px rgba(190,24,93,0.55)',
-            }}
-          >
-            🎡 VÒNG QUAY MẶT TRỜI • 40 Xu (Bấm lên Cabin)
-          </div>
-        </Html>
       </group>
 
       {/* ================================================================= */}
@@ -1169,25 +1052,6 @@ export function DetailedWonderlandAmusementPark({
             </group>
           ))}
         </group>
-
-        <Html position={[0, 23.1, 0]} center>
-          <div
-            style={{
-              background: 'linear-gradient(135deg, #dc2626, #991b1b)',
-              color: '#ffffff',
-              padding: '4px 11px',
-              borderRadius: '999px',
-              fontSize: '10.5px',
-              fontWeight: 900,
-              whiteSpace: 'nowrap',
-              cursor: 'pointer',
-              border: '2px solid #fde047',
-              boxShadow: '0 6px 16px rgba(220,38,38,0.55)',
-            }}
-          >
-            🗼 THÁP RƠI TỰ DO 22M • 45 Xu
-          </div>
-        </Html>
       </group>
 
       {/* ================================================================= */}
@@ -1278,25 +1142,6 @@ export function DetailedWonderlandAmusementPark({
             );
           })}
         </group>
-
-        <Html position={[0, 9.2, 0]} center>
-          <div
-            style={{
-              background: 'linear-gradient(135deg, #0284c7, #1e3a8a)',
-              color: '#ffffff',
-              padding: '4px 11px',
-              borderRadius: '999px',
-              fontSize: '10.5px',
-              fontWeight: 900,
-              whiteSpace: 'nowrap',
-              cursor: 'pointer',
-              border: '2px solid #38bdf8',
-              boxShadow: '0 6px 16px rgba(2,132,199,0.55)',
-            }}
-          >
-            🚀 PHI THUYỀN VŨ TRỤ • 35 Xu
-          </div>
-        </Html>
       </group>
     </group>
   );

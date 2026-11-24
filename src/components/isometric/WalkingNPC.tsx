@@ -10,6 +10,7 @@ import {
   setNearbyStreetNpcId,
 } from '@/stores/useMultiplayerStore';
 import { FashionAvatar, type FashionAvatarRef } from './FashionAvatar';
+import KeyPromptBadge from './KeyPromptBadge';
 
 export interface CitizenConfig {
   id: string;
@@ -177,73 +178,16 @@ function WanderingCitizen({
         onInteract?.(citizen.id);
       }}
     >
-      {/* Nhãn tên gọn nhẹ: Chỉ hiện nút [E] khi người chơi đứng gần để không rối mắt */}
-      <Html position={[0, 2.15, 0]} center zIndexRange={[15, 0]}>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            pointerEvents: isPlayerNear ? 'auto' : 'none',
-          }}
-        >
-          {isPlayerNear ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onInteract?.(citizen.id);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 11px',
-                borderRadius: '999px',
-                background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-                color: '#ffffff',
-                border: '1.5px solid #93c5fd',
-                boxShadow: '0 6px 16px rgba(37, 99, 235, 0.5)',
-                fontWeight: 900,
-                fontSize: '11px',
-                whiteSpace: 'nowrap',
-                cursor: 'pointer',
-                fontFamily: 'system-ui, sans-serif',
-              }}
-            >
-              <span
-                style={{
-                  padding: '1px 5px',
-                  borderRadius: '5px',
-                  backgroundColor: '#fbbf24',
-                  color: '#0f172a',
-                  fontWeight: 900,
-                  fontSize: '10px',
-                }}
-              >
-                E
-              </span>
-              <span>{citizen.name}</span>
-            </button>
-          ) : (
-            <div
-              style={{
-                padding: '2px 7px',
-                borderRadius: '999px',
-                backgroundColor: 'rgba(15, 23, 42, 0.68)',
-                border: `1px solid ${citizen.badgeColor}`,
-                color: '#f8fafc',
-                fontSize: '9.5px',
-                fontWeight: 700,
-                whiteSpace: 'nowrap',
-                fontFamily: 'system-ui, sans-serif',
-              }}
-            >
-              {citizen.name}
-            </div>
-          )}
-        </div>
-      </Html>
+      {/* Chỉ hiện phím [E] khi người chơi đến gần, triệt tiêu chữ rối mắt */}
+      {isPlayerNear && (
+        <Html position={[0, 2.15, 0]} center zIndexRange={[15, 0]}>
+          <KeyPromptBadge
+            keyLabel="E"
+            onClick={() => onInteract?.(citizen.id)}
+            color="#60a5fa"
+          />
+        </Html>
+      )}
 
       <FashionAvatar
         ref={avatarRef}

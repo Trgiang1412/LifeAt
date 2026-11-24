@@ -103,6 +103,8 @@ export function Html({
   const idRef = useRef<string>(`html3d_${rawId.replace(/:/g, '_')}`);
   const groupRef = useRef<THREE.Group>(null);
 
+  const zIndexVal = zIndexRange ? zIndexRange[0] : 10;
+
   useEffect(() => {
     const id = idRef.current;
     portalEntries.set(id, {
@@ -110,10 +112,10 @@ export function Html({
       children,
       center,
       style,
-      zIndex: zIndexRange ? zIndexRange[0] : 10,
+      zIndex: zIndexVal,
     });
     notifyPortalListeners();
-  });
+  }, [children, center, style, zIndexVal]);
 
   useEffect(() => {
     const id = idRef.current;
@@ -129,7 +131,6 @@ export function Html({
     const grp = groupRef.current;
     if (!el || !grp) return;
 
-    grp.updateWorldMatrix(true, false);
     _projVec.setFromMatrixPosition(grp.matrixWorld);
     _projVec.project(camera);
 

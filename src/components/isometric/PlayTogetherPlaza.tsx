@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { Html } from './SafeHtml';
+import { KeyPromptBadge } from './KeyPromptBadge';
 
 // ============================================================================
 // BỘ KHỞI TẠO TEXTURE PROCEDURAL CHÂN THỰC (CACHED CANVAS TEXTURES)
@@ -165,6 +166,76 @@ function useIndoorFloorTexture(repeatX = 6, repeatY = 6) {
   );
 }
 
+/** Texture sàn gỗ sồi ấm áp sang trọng (Scandinavian Oak Herringbone/Plank) */
+export function useWarmWoodParquetTexture(repeatX = 8, repeatY = 6) {
+  return useMemo(
+    () =>
+      getOrCreateTexture('warm_oak_parquet', 512, 512, repeatX, repeatY, (ctx, w, h) => {
+        ctx.fillStyle = '#c89666';
+        ctx.fillRect(0, 0, w, h);
+        const plankH = 32;
+        const plankW = 128;
+        const rows = h / plankH;
+        for (let r = 0; r < rows; r++) {
+          const offset = (r % 2) * (plankW * 0.5);
+          const cols = Math.ceil(w / plankW) + 2;
+          for (let c = -1; c < cols; c++) {
+            const x = c * plankW + offset;
+            const y = r * plankH;
+            const tone = (r * 7 + c * 13) % 4;
+            ctx.fillStyle =
+              tone === 0 ? '#d4a373' : tone === 1 ? '#c28f5c' : tone === 2 ? '#cb9967' : '#b8824f';
+            ctx.fillRect(x + 1, y + 1, plankW - 2, plankH - 2);
+
+            // Vân gỗ tinh tế
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+            ctx.fillRect(x + 2, y + 9, plankW - 4, 1.5);
+            ctx.fillRect(x + 2, y + 21, plankW - 4, 1.5);
+
+            // Mạch ghép phay rãnh gỗ sồi
+            ctx.strokeStyle = '#99653a';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(x, y, plankW, plankH);
+          }
+        }
+      }),
+    [repeatX, repeatY]
+  );
+}
+
+/** Texture gạch men phòng vệ sinh / phòng tắm sáng sạch chống trượt */
+export function useBathroomTileTexture(repeatX = 6, repeatY = 6) {
+  return useMemo(
+    () =>
+      getOrCreateTexture('bathroom_ceramic_tile', 256, 256, repeatX, repeatY, (ctx, w, h) => {
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(0, 0, w, h);
+        const step = 64;
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 4; c++) {
+            ctx.fillStyle = (r + c) % 2 === 0 ? '#f1f5f9' : '#e0f2fe';
+            ctx.fillRect(c * step + 2, r * step + 2, step - 4, step - 4);
+          }
+        }
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 2;
+        for (let x = 0; x <= w; x += step) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+        }
+        for (let y = 0; y <= h; y += step) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+      }),
+    [repeatX, repeatY]
+  );
+}
+
 /** Texture kính mặt dựng tòa cao ốc (Curtain Wall Glass) */
 function useCurtainWallTexture(tintColor = '#1e3a5f', repeatX = 4, repeatY = 8) {
   return useMemo(
@@ -205,12 +276,12 @@ export interface HouseFurnitureRenderItem {
 }
 
 const FALLBACK_FURNITURE_LIST: HouseFurnitureRenderItem[] = [
-  { maVatPham: 'GIUONG_GO_DON', toaDoLuoiX: 8, toaDoLuoiZ: 7, gocXoayDo: 0 },
-  { maVatPham: 'BAN_HOC_DEN_LED', toaDoLuoiX: 8, toaDoLuoiZ: 2, gocXoayDo: 0 },
-  { maVatPham: 'KE_SACH_OXFORD', toaDoLuoiX: 9, toaDoLuoiZ: 2, gocXoayDo: 0 },
-  { maVatPham: 'SOFA_GO_PHONG_KHACH', toaDoLuoiX: 2, toaDoLuoiZ: 5, gocXoayDo: 0 },
-  { maVatPham: 'KE_TIVI_CO_DIEN', toaDoLuoiX: 2, toaDoLuoiZ: 8, gocXoayDo: 0 },
-  { maVatPham: 'THAM_DET_THO_CAM', toaDoLuoiX: 3, toaDoLuoiZ: 5, gocXoayDo: 0 },
+  { maVatPham: 'GIUONG_GO_DON', toaDoLuoiX: 8, toaDoLuoiZ: 0, gocXoayDo: 180 },
+  { maVatPham: 'BAN_HOC_DEN_LED', toaDoLuoiX: 2, toaDoLuoiZ: 0, gocXoayDo: 0 },
+  { maVatPham: 'KE_SACH_OXFORD', toaDoLuoiX: 3, toaDoLuoiZ: 0, gocXoayDo: 0 },
+  { maVatPham: 'SOFA_GO_PHONG_KHACH', toaDoLuoiX: 1, toaDoLuoiZ: 6, gocXoayDo: 0 },
+  { maVatPham: 'KE_TIVI_CO_DIEN', toaDoLuoiX: 3, toaDoLuoiZ: 6, gocXoayDo: 270 },
+  { maVatPham: 'THAM_DET_THO_CAM', toaDoLuoiX: 2, toaDoLuoiZ: 6, gocXoayDo: 0 },
 ];
 
 export function HouseFurnitureItem3D({
@@ -247,298 +318,785 @@ export function HouseFurnitureItem3D({
     >
       {isSelected && (
         <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.95, 1.15, 28]} />
+          <ringGeometry args={[1.05, 1.25, 28]} />
           <meshBasicMaterial color="#38bdf8" />
         </mesh>
       )}
+
+      {/* 1. THẢM DỆT THỔ CẨM / BOHEMIAN RUG */}
       {item.maVatPham === 'THAM_DET_THO_CAM' && (
-        <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <planeGeometry args={[2.2, 1.6]} />
-          <meshStandardMaterial color="#fde68a" roughness={0.85} />
-        </mesh>
+        <group>
+          <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[3.2, 2.3]} />
+            <meshStandardMaterial color="#f5ebd6" roughness={0.92} />
+          </mesh>
+          <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[2.85, 1.95]} />
+            <meshStandardMaterial color="#e7d3b0" roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 0.021, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} receiveShadow>
+            <planeGeometry args={[1.05, 1.05]} />
+            <meshStandardMaterial color="#d97706" roughness={0.85} />
+          </mesh>
+          <mesh position={[0, 0.023, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} receiveShadow>
+            <planeGeometry args={[0.62, 0.62]} />
+            <meshStandardMaterial color="#fef3c7" roughness={0.85} />
+          </mesh>
+          {[-1.64, 1.64].map((xPos, i) => (
+            <mesh key={i} position={[xPos, 0.014, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[0.12, 2.24]} />
+              <meshStandardMaterial color="#d6c5a9" roughness={0.95} />
+            </mesh>
+          ))}
+        </group>
       )}
 
+      {/* 2. THẢM LÔNG CỪU TRÒN PASTEL */}
       {item.maVatPham === 'THAM_LONG_CUU_TRON' && (
-        <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <circleGeometry args={[1.15, 24]} />
-          <meshStandardMaterial color="#f8fafc" roughness={0.9} />
-        </mesh>
+        <group>
+          <mesh position={[0, 0.016, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <circleGeometry args={[1.55, 32]} />
+            <meshStandardMaterial color="#fce7f3" roughness={0.95} />
+          </mesh>
+          <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <circleGeometry args={[1.18, 28]} />
+            <meshStandardMaterial color="#fbcfe8" roughness={0.95} />
+          </mesh>
+          <mesh position={[0, 0.024, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <circleGeometry args={[0.72, 24]} />
+            <meshStandardMaterial color="#fdf2f8" roughness={0.95} />
+          </mesh>
+        </group>
       )}
 
+      {/* 3. BỘ TRƯỜNG KỶ GỖ SỒI & BÀN TRÀ JAPANDI */}
       {item.maVatPham === 'SOFA_GO_PHONG_KHACH' && (
         <group>
-          <mesh position={[-0.45, 0.32, 0]} castShadow>
-            <boxGeometry args={[0.62, 0.42, 1.85]} />
-            <meshStandardMaterial color="#92400e" roughness={0.6} />
+          {[
+            [-0.72, -0.82],
+            [-0.72, 0.82],
+            [-0.18, -0.82],
+            [-0.18, 0.82],
+          ].map(([x, z], idx) => (
+            <mesh key={idx} position={[x, 0.1, z]} castShadow>
+              <cylinderGeometry args={[0.035, 0.025, 0.2, 8]} />
+              <meshStandardMaterial color="#5c2d0c" roughness={0.6} />
+            </mesh>
+          ))}
+          <mesh position={[-0.45, 0.22, 0]} castShadow receiveShadow>
+            <boxGeometry args={[0.78, 0.1, 1.95]} />
+            <meshStandardMaterial color="#854d0e" roughness={0.55} />
           </mesh>
-          <mesh position={[-0.68, 0.68, 0]} castShadow>
-            <boxGeometry args={[0.14, 0.52, 1.85]} />
-            <meshStandardMaterial color="#78350f" roughness={0.6} />
+          <mesh position={[-0.42, 0.34, -0.46]} castShadow>
+            <boxGeometry args={[0.7, 0.16, 0.88]} />
+            <meshStandardMaterial color="#f5f5f4" roughness={0.85} />
           </mesh>
-          <mesh position={[0.38, 0.3, 0]} castShadow>
-            <boxGeometry args={[0.72, 0.4, 1.15]} />
-            <meshStandardMaterial color="#b45309" roughness={0.5} />
+          <mesh position={[-0.42, 0.34, 0.46]} castShadow>
+            <boxGeometry args={[0.7, 0.16, 0.88]} />
+            <meshStandardMaterial color="#f5f5f4" roughness={0.85} />
           </mesh>
-          <mesh position={[0.38, 0.56, 0]}>
-            <cylinderGeometry args={[0.11, 0.09, 0.14, 10]} />
-            <meshStandardMaterial color="#38bdf8" />
+          <mesh position={[-0.78, 0.56, 0]} castShadow>
+            <boxGeometry args={[0.1, 0.62, 1.95]} />
+            <meshStandardMaterial color="#713f12" roughness={0.55} />
           </mesh>
-        </group>
-      )}
+          <mesh position={[-0.66, 0.56, -0.46]} rotation={[0, 0, -0.12]} castShadow>
+            <boxGeometry args={[0.16, 0.42, 0.82]} />
+            <meshStandardMaterial color="#e7e5e4" roughness={0.85} />
+          </mesh>
+          <mesh position={[-0.66, 0.56, 0.46]} rotation={[0, 0, -0.12]} castShadow>
+            <boxGeometry args={[0.16, 0.42, 0.82]} />
+            <meshStandardMaterial color="#e7e5e4" roughness={0.85} />
+          </mesh>
+          <mesh position={[-0.45, 0.44, -0.92]} castShadow>
+            <boxGeometry args={[0.76, 0.34, 0.1]} />
+            <meshStandardMaterial color="#713f12" roughness={0.55} />
+          </mesh>
+          <mesh position={[-0.45, 0.44, 0.92]} castShadow>
+            <boxGeometry args={[0.76, 0.34, 0.1]} />
+            <meshStandardMaterial color="#713f12" roughness={0.55} />
+          </mesh>
+          <mesh position={[-0.55, 0.52, -0.68]} rotation={[0.2, 0.25, -0.15]} castShadow>
+            <boxGeometry args={[0.12, 0.28, 0.28]} />
+            <meshStandardMaterial color="#d97706" roughness={0.8} />
+          </mesh>
+          <mesh position={[-0.55, 0.52, 0.68]} rotation={[-0.2, -0.25, -0.15]} castShadow>
+            <boxGeometry args={[0.12, 0.28, 0.28]} />
+            <meshStandardMaterial color="#0d9488" roughness={0.8} />
+          </mesh>
 
-      {item.maVatPham === 'SOFA_DA_HIEN_DAI' && (
-        <group>
-          <mesh position={[-0.42, 0.34, 0]} castShadow>
-            <boxGeometry args={[0.72, 0.44, 1.95]} />
-            <meshStandardMaterial color="#0f766e" roughness={0.35} />
+          {[
+            [0.25, -0.45],
+            [0.25, 0.45],
+            [0.75, -0.45],
+            [0.75, 0.45],
+          ].map(([x, z], idx) => (
+            <mesh key={`tbl-leg-${idx}`} position={[x, 0.14, z]} castShadow>
+              <cylinderGeometry args={[0.025, 0.02, 0.28, 8]} />
+              <meshStandardMaterial color="#1e293b" metalness={0.6} />
+            </mesh>
+          ))}
+          <mesh position={[0.5, 0.31, 0]} castShadow receiveShadow>
+            <boxGeometry args={[0.75, 0.07, 1.2]} />
+            <meshStandardMaterial color="#a16207" roughness={0.45} />
           </mesh>
-          <mesh position={[-0.68, 0.72, 0]} castShadow>
-            <boxGeometry args={[0.2, 0.55, 1.95]} />
-            <meshStandardMaterial color="#115e59" roughness={0.35} />
+          <mesh position={[0.5, 0.36, 0]} castShadow>
+            <cylinderGeometry args={[0.24, 0.22, 0.03, 16]} />
+            <meshStandardMaterial color="#d6d3d1" roughness={0.4} />
           </mesh>
-          <mesh position={[0.42, 0.28, 0]} castShadow>
-            <boxGeometry args={[0.75, 0.35, 1.2]} />
-            <meshStandardMaterial color="#bae6fd" transparent opacity={0.8} metalness={0.4} />
+          <mesh position={[0.48, 0.43, -0.06]} castShadow>
+            <cylinderGeometry args={[0.07, 0.08, 0.11, 12]} />
+            <meshStandardMaterial color="#0f766e" roughness={0.25} />
           </mesh>
-        </group>
-      )}
-
-      {item.maVatPham === 'KE_TIVI_CO_DIEN' && (
-        <group>
-          <mesh position={[0, 0.28, 0]} castShadow>
-            <boxGeometry args={[1.75, 0.48, 0.46]} />
-            <meshStandardMaterial color="#78350f" roughness={0.6} />
-          </mesh>
-          <mesh position={[0, 0.88, 0]} castShadow>
-            <boxGeometry args={[1.38, 0.78, 0.08]} />
-            <meshStandardMaterial color="#0f172a" roughness={0.15} metalness={0.6} />
-          </mesh>
-        </group>
-      )}
-
-      {item.maVatPham === 'GIUONG_GO_DON' && (
-        <group>
-          <mesh position={[0, 0.22, 0]} castShadow>
-            <boxGeometry args={[1.55, 0.34, 2.05]} />
-            <meshStandardMaterial color="#92400e" roughness={0.6} />
-          </mesh>
-          <mesh position={[0, 0.42, 0]} castShadow>
-            <boxGeometry args={[1.45, 0.16, 1.92]} />
-            <meshStandardMaterial color="#ffffff" roughness={0.5} />
-          </mesh>
-          <mesh position={[0, 0.46, -0.3]} castShadow>
-            <boxGeometry args={[1.47, 0.14, 1.2]} />
-            <meshStandardMaterial color="#38bdf8" roughness={0.6} />
-          </mesh>
-          <mesh position={[0, 0.54, 0.65]} castShadow>
-            <boxGeometry args={[0.78, 0.12, 0.38]} />
-            <meshStandardMaterial color="#fef08a" roughness={0.5} />
-          </mesh>
-        </group>
-      )}
-
-      {item.maVatPham === 'GIUONG_HOANG_GIA' && (
-        <group>
-          <mesh position={[0, 0.25, 0]} castShadow>
-            <boxGeometry args={[1.95, 0.4, 2.15]} />
-            <meshStandardMaterial color="#b45309" metalness={0.35} roughness={0.4} />
-          </mesh>
-          <mesh position={[0, 0.78, 0.98]} castShadow>
-            <boxGeometry args={[1.95, 0.95, 0.16]} />
-            <meshStandardMaterial color="#f59e0b" metalness={0.5} roughness={0.3} />
-          </mesh>
-          <mesh position={[0, 0.48, -0.15]} castShadow>
-            <boxGeometry args={[1.82, 0.18, 1.55]} />
-            <meshStandardMaterial color="#be123c" roughness={0.45} />
-          </mesh>
-          <mesh position={[-0.42, 0.58, 0.68]} castShadow>
-            <boxGeometry args={[0.65, 0.14, 0.38]} />
-            <meshStandardMaterial color="#fef08a" />
-          </mesh>
-          <mesh position={[0.42, 0.58, 0.68]} castShadow>
-            <boxGeometry args={[0.65, 0.14, 0.38]} />
-            <meshStandardMaterial color="#fef08a" />
-          </mesh>
-        </group>
-      )}
-
-      {item.maVatPham === 'BAN_HOC_DEN_LED' && (
-        <group>
-          <mesh position={[0, 0.42, 0]} castShadow>
-            <boxGeometry args={[1.35, 0.72, 0.68]} />
-            <meshStandardMaterial color="#d97706" roughness={0.5} />
-          </mesh>
-          <mesh position={[0, 0.82, 0]}>
-            <boxGeometry args={[0.42, 0.04, 0.3]} />
-            <meshStandardMaterial color="#cbd5e1" metalness={0.6} />
-          </mesh>
-          <mesh position={[-0.45, 0.98, -0.15]}>
-            <sphereGeometry args={[0.1, 8, 8]} />
-            <meshStandardMaterial color="#fef08a" emissive="#f59e0b" emissiveIntensity={1} />
-          </mesh>
-        </group>
-      )}
-
-      {item.maVatPham === 'KE_SACH_OXFORD' && (
-        <group>
-          <mesh position={[0, 0.9, 0]} castShadow>
-            <boxGeometry args={[0.52, 1.75, 0.68]} />
-            <meshStandardMaterial color="#78350f" roughness={0.6} />
-          </mesh>
-          <mesh position={[0.04, 1.2, 0]}>
-            <boxGeometry args={[0.46, 0.28, 0.52]} />
-            <meshStandardMaterial color="#38bdf8" />
-          </mesh>
-          <mesh position={[0.04, 0.75, 0]}>
-            <boxGeometry args={[0.46, 0.28, 0.52]} />
-            <meshStandardMaterial color="#f43f5e" />
-          </mesh>
-        </group>
-      )}
-
-      {item.maVatPham === 'DAN_PIANO_CO_DIEN' && (
-        <group>
-          <mesh position={[0, 0.62, 0]} castShadow>
-            <boxGeometry args={[1.45, 1.15, 0.58]} />
-            <meshStandardMaterial color="#0f172a" roughness={0.18} metalness={0.5} />
-          </mesh>
-          <mesh position={[0, 0.68, 0.32]} castShadow>
-            <boxGeometry args={[1.32, 0.1, 0.22]} />
+          <mesh position={[0.56, 0.4, 0.1]}>
+            <cylinderGeometry args={[0.04, 0.035, 0.06, 10]} />
             <meshStandardMaterial color="#f8fafc" />
           </mesh>
-          <mesh position={[0, 0.26, 0.65]} castShadow>
-            <boxGeometry args={[0.68, 0.42, 0.35]} />
-            <meshStandardMaterial color="#451a03" />
+        </group>
+      )}
+
+      {/* 4. SOFA DA BẮC ÂU L-SHAPE CAO CẤP & BÀN MARBLE */}
+      {item.maVatPham === 'SOFA_DA_HIEN_DAI' && (
+        <group>
+          {[
+            [-0.78, -0.95],
+            [-0.78, 0.95],
+            [-0.08, -0.95],
+            [0.35, 0.95],
+          ].map(([x, z], idx) => (
+            <mesh key={idx} position={[x, 0.08, z]} castShadow>
+              <cylinderGeometry args={[0.025, 0.02, 0.16, 8]} />
+              <meshStandardMaterial color="#0f172a" metalness={0.8} />
+            </mesh>
+          ))}
+          <mesh position={[-0.45, 0.26, 0]} castShadow receiveShadow>
+            <boxGeometry args={[0.82, 0.24, 2.1]} />
+            <meshStandardMaterial color="#0f766e" roughness={0.35} />
+          </mesh>
+          <mesh position={[0.05, 0.26, 0.65]} castShadow receiveShadow>
+            <boxGeometry args={[0.92, 0.24, 0.8]} />
+            <meshStandardMaterial color="#0f766e" roughness={0.35} />
+          </mesh>
+          <mesh position={[-0.42, 0.42, -0.52]} castShadow>
+            <boxGeometry args={[0.76, 0.14, 0.92]} />
+            <meshStandardMaterial color="#14b8a6" roughness={0.4} />
+          </mesh>
+          <mesh position={[-0.18, 0.42, 0.55]} castShadow>
+            <boxGeometry args={[1.25, 0.14, 0.9]} />
+            <meshStandardMaterial color="#14b8a6" roughness={0.4} />
+          </mesh>
+          <mesh position={[-0.78, 0.62, 0]} castShadow>
+            <boxGeometry args={[0.2, 0.62, 2.1]} />
+            <meshStandardMaterial color="#115e59" roughness={0.35} />
+          </mesh>
+          <mesh position={[-0.45, 0.52, -1.0]} castShadow>
+            <boxGeometry args={[0.84, 0.46, 0.18]} />
+            <meshStandardMaterial color="#115e59" roughness={0.35} />
+          </mesh>
+          <mesh position={[-0.58, 0.6, -0.65]} rotation={[0.15, 0.3, -0.2]} castShadow>
+            <boxGeometry args={[0.14, 0.32, 0.32]} />
+            <meshStandardMaterial color="#fef08a" roughness={0.75} />
+          </mesh>
+          <mesh position={[-0.58, 0.6, 0.15]} rotation={[-0.1, -0.2, -0.2]} castShadow>
+            <boxGeometry args={[0.14, 0.32, 0.32]} />
+            <meshStandardMaterial color="#fb923c" roughness={0.75} />
+          </mesh>
+          <mesh position={[0.55, 0.34, -0.35]} castShadow receiveShadow>
+            <cylinderGeometry args={[0.48, 0.48, 0.05, 24]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.15} metalness={0.1} />
+          </mesh>
+          <mesh position={[0.55, 0.17, -0.35]} castShadow>
+            <cylinderGeometry args={[0.18, 0.28, 0.32, 16]} />
+            <meshStandardMaterial color="#1e293b" metalness={0.6} roughness={0.3} />
+          </mesh>
+          <mesh position={[0.55, 0.44, -0.35]} castShadow>
+            <cylinderGeometry args={[0.06, 0.09, 0.16, 12]} />
+            <meshStandardMaterial color="#f59e0b" metalness={0.5} roughness={0.2} />
           </mesh>
         </group>
       )}
 
+      {/* 5. KỆ TIVI HIỆN ĐẠI & SMART TV 75" OLED */}
+      {item.maVatPham === 'KE_TIVI_CO_DIEN' && (
+        <group>
+          {[-0.85, 0.85].map((x, idx) => (
+            <mesh key={idx} position={[x, 0.1, 0]} castShadow>
+              <boxGeometry args={[0.06, 0.2, 0.42]} />
+              <meshStandardMaterial color="#1e293b" metalness={0.7} />
+            </mesh>
+          ))}
+          <mesh position={[0, 0.34, 0]} castShadow receiveShadow>
+            <boxGeometry args={[2.1, 0.36, 0.52]} />
+            <meshStandardMaterial color="#78350f" roughness={0.5} />
+          </mesh>
+          <mesh position={[0, 0.53, 0]}>
+            <boxGeometry args={[2.14, 0.04, 0.54]} />
+            <meshStandardMaterial color="#f1f5f9" roughness={0.2} />
+          </mesh>
+          <mesh position={[0, 0.62, -0.04]} castShadow>
+            <boxGeometry args={[0.45, 0.14, 0.22]} />
+            <meshStandardMaterial color="#475569" metalness={0.8} />
+          </mesh>
+          <mesh position={[0, 1.12, -0.04]} castShadow>
+            <boxGeometry args={[1.72, 0.94, 0.05]} />
+            <meshStandardMaterial color="#0f172a" roughness={0.2} metalness={0.7} />
+          </mesh>
+          <mesh position={[0, 1.12, -0.01]}>
+            <planeGeometry args={[1.64, 0.86]} />
+            <meshStandardMaterial
+              color="#0284c7"
+              emissive="#0ea5e9"
+              emissiveIntensity={0.65}
+              roughness={0.1}
+            />
+          </mesh>
+          <mesh position={[0, 0.59, 0.14]} castShadow>
+            <boxGeometry args={[1.15, 0.08, 0.1]} />
+            <meshStandardMaterial color="#1e293b" roughness={0.4} metalness={0.5} />
+          </mesh>
+          <mesh position={[-0.82, 0.64, 0.08]} castShadow>
+            <cylinderGeometry args={[0.06, 0.08, 0.18, 12]} />
+            <meshStandardMaterial color="#e2e8f0" roughness={0.3} />
+          </mesh>
+          <mesh position={[-0.82, 0.78, 0.08]}>
+            <dodecahedronGeometry args={[0.1, 0]} />
+            <meshStandardMaterial color="#16a34a" roughness={0.7} />
+          </mesh>
+        </group>
+      )}
+
+      {/* 6. GIƯỜNG GỖ ĐƠN SCANDINAVIAN ẤM CÚNG */}
+      {item.maVatPham === 'GIUONG_GO_DON' && (
+        <group>
+          {[
+            [-0.78, -0.95],
+            [0.78, -0.95],
+            [-0.78, 0.95],
+            [0.78, 0.95],
+          ].map(([x, z], idx) => (
+            <mesh key={idx} position={[x, 0.11, z]} castShadow>
+              <cylinderGeometry args={[0.045, 0.03, 0.22, 10]} />
+              <meshStandardMaterial color="#78350f" roughness={0.5} />
+            </mesh>
+          ))}
+          <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
+            <boxGeometry args={[1.72, 0.16, 2.15]} />
+            <meshStandardMaterial color="#a16207" roughness={0.55} />
+          </mesh>
+          <mesh position={[0, 0.72, 1.02]} castShadow>
+            <boxGeometry args={[1.76, 0.85, 0.12]} />
+            <meshStandardMaterial color="#854d0e" roughness={0.55} />
+          </mesh>
+          <mesh position={[0, 0.74, 0.95]} castShadow>
+            <boxGeometry args={[1.56, 0.56, 0.06]} />
+            <meshStandardMaterial color="#f5f5f4" roughness={0.85} />
+          </mesh>
+          <mesh position={[0, 0.42, -0.02]} castShadow receiveShadow>
+            <boxGeometry args={[1.58, 0.22, 1.98]} />
+            <meshStandardMaterial color="#ffffff" roughness={0.6} />
+          </mesh>
+          <mesh position={[0, 0.47, -0.32]} castShadow>
+            <boxGeometry args={[1.62, 0.18, 1.38]} />
+            <meshStandardMaterial color="#38bdf8" roughness={0.75} />
+          </mesh>
+          <mesh position={[0, 0.54, 0.35]} castShadow>
+            <boxGeometry args={[1.6, 0.08, 0.24]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.7} />
+          </mesh>
+          <mesh position={[-0.4, 0.58, 0.74]} rotation={[0.2, 0, 0]} castShadow>
+            <boxGeometry args={[0.58, 0.14, 0.36]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.7} />
+          </mesh>
+          <mesh position={[0.4, 0.58, 0.74]} rotation={[0.2, 0, 0]} castShadow>
+            <boxGeometry args={[0.58, 0.14, 0.36]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 0.62, 0.58]} rotation={[0.35, 0.1, 0]} castShadow>
+            <boxGeometry args={[0.42, 0.12, 0.24]} />
+            <meshStandardMaterial color="#f59e0b" roughness={0.75} />
+          </mesh>
+          <group position={[-1.12, 0, 0.8]}>
+            <mesh position={[0, 0.26, 0]} castShadow>
+              <boxGeometry args={[0.42, 0.44, 0.42]} />
+              <meshStandardMaterial color="#92400e" roughness={0.55} />
+            </mesh>
+            <mesh position={[0, 0.54, 0]}>
+              <cylinderGeometry args={[0.04, 0.06, 0.12, 10]} />
+              <meshStandardMaterial color="#1e293b" />
+            </mesh>
+            <mesh position={[0, 0.66, 0]}>
+              <cylinderGeometry args={[0.1, 0.14, 0.16, 12]} />
+              <meshStandardMaterial
+                color="#fef08a"
+                emissive="#f59e0b"
+                emissiveIntensity={0.85}
+              />
+            </mesh>
+          </group>
+        </group>
+      )}
+
+      {/* 7. GIƯỜNG ĐÔI HOÀNG GIA KING SIZE */}
+      {item.maVatPham === 'GIUONG_HOANG_GIA' && (
+        <group>
+          <mesh position={[0, 0.26, 0]} castShadow receiveShadow>
+            <boxGeometry args={[2.15, 0.36, 2.3]} />
+            <meshStandardMaterial color="#78350f" roughness={0.4} />
+          </mesh>
+          {[
+            [-1.02, 1.08],
+            [1.02, 1.08],
+            [-1.02, -1.08],
+            [1.02, -1.08],
+          ].map(([x, z], idx) => (
+            <group key={idx} position={[x, 0.65, z]}>
+              <mesh castShadow>
+                <cylinderGeometry args={[0.06, 0.07, 1.2, 12]} />
+                <meshStandardMaterial color="#b45309" metalness={0.45} roughness={0.3} />
+              </mesh>
+              <mesh position={[0, 0.65, 0]}>
+                <sphereGeometry args={[0.09, 12, 12]} />
+                <meshStandardMaterial color="#facc15" metalness={0.8} roughness={0.2} />
+              </mesh>
+            </group>
+          ))}
+          <mesh position={[0, 0.92, 1.08]} castShadow>
+            <boxGeometry args={[2.0, 1.05, 0.16]} />
+            <meshStandardMaterial color="#991b1b" roughness={0.6} />
+          </mesh>
+          <mesh position={[0, 0.92, 1.12]}>
+            <boxGeometry args={[2.12, 1.15, 0.06]} />
+            <meshStandardMaterial color="#f59e0b" metalness={0.7} roughness={0.25} />
+          </mesh>
+          <mesh position={[0, 0.48, -0.02]} castShadow>
+            <boxGeometry args={[1.95, 0.22, 2.08]} />
+            <meshStandardMaterial color="#fffbeb" roughness={0.5} />
+          </mesh>
+          <mesh position={[0, 0.54, -0.25]} castShadow>
+            <boxGeometry args={[1.98, 0.18, 1.55]} />
+            <meshStandardMaterial color="#be123c" roughness={0.5} />
+          </mesh>
+          <mesh position={[0, 0.62, -0.82]}>
+            <boxGeometry args={[2.0, 0.05, 0.35]} />
+            <meshStandardMaterial color="#facc15" metalness={0.6} roughness={0.3} />
+          </mesh>
+          <mesh position={[-0.48, 0.66, 0.76]} rotation={[0.25, 0, 0]} castShadow>
+            <boxGeometry args={[0.72, 0.16, 0.4]} />
+            <meshStandardMaterial color="#fef08a" roughness={0.6} />
+          </mesh>
+          <mesh position={[0.48, 0.66, 0.76]} rotation={[0.25, 0, 0]} castShadow>
+            <boxGeometry args={[0.72, 0.16, 0.4]} />
+            <meshStandardMaterial color="#fef08a" roughness={0.6} />
+          </mesh>
+        </group>
+      )}
+
+      {/* 8. BÀN HỌC TIẾNG ANH & LAPTOP HIỆN ĐẠI */}
+      {item.maVatPham === 'BAN_HOC_DEN_LED' && (
+        <group>
+          {[
+            [-0.72, -0.32],
+            [0.72, -0.32],
+            [-0.72, 0.32],
+            [0.72, 0.32],
+          ].map(([x, z], idx) => (
+            <mesh key={idx} position={[x, 0.36, z]} castShadow>
+              <cylinderGeometry args={[0.025, 0.025, 0.72, 8]} />
+              <meshStandardMaterial color="#1e293b" metalness={0.7} />
+            </mesh>
+          ))}
+          <mesh position={[0, 0.74, 0]} castShadow receiveShadow>
+            <boxGeometry args={[1.65, 0.06, 0.8]} />
+            <meshStandardMaterial color="#d97706" roughness={0.45} />
+          </mesh>
+          <mesh position={[0.52, 0.6, 0]} castShadow>
+            <boxGeometry args={[0.48, 0.24, 0.72]} />
+            <meshStandardMaterial color="#b45309" roughness={0.5} />
+          </mesh>
+          <mesh position={[-0.08, 0.775, 0.05]}>
+            <boxGeometry args={[0.85, 0.01, 0.42]} />
+            <meshStandardMaterial color="#334155" roughness={0.85} />
+          </mesh>
+          <mesh position={[-0.08, 0.79, 0.05]} castShadow>
+            <boxGeometry args={[0.44, 0.02, 0.3]} />
+            <meshStandardMaterial color="#cbd5e1" metalness={0.7} roughness={0.2} />
+          </mesh>
+          <mesh position={[-0.08, 0.92, -0.1]} rotation={[-0.25, 0, 0]} castShadow>
+            <boxGeometry args={[0.44, 0.28, 0.015]} />
+            <meshStandardMaterial color="#94a3b8" metalness={0.7} />
+          </mesh>
+          <mesh position={[-0.08, 0.92, -0.09]} rotation={[-0.25, 0, 0]}>
+            <planeGeometry args={[0.4, 0.24]} />
+            <meshStandardMaterial color="#38bdf8" emissive="#0284c7" emissiveIntensity={0.8} />
+          </mesh>
+          <mesh position={[-0.62, 0.8, -0.22]} castShadow>
+            <cylinderGeometry args={[0.09, 0.1, 0.04, 12]} />
+            <meshStandardMaterial color="#0f172a" />
+          </mesh>
+          <mesh position={[-0.62, 0.98, -0.22]} rotation={[0, 0, -0.2]}>
+            <cylinderGeometry args={[0.015, 0.015, 0.36, 8]} />
+            <meshStandardMaterial color="#475569" metalness={0.6} />
+          </mesh>
+          <mesh position={[-0.5, 1.12, -0.15]} rotation={[0.4, 0, 0.4]}>
+            <coneGeometry args={[0.09, 0.14, 12]} />
+            <meshStandardMaterial color="#f59e0b" roughness={0.3} />
+          </mesh>
+          <mesh position={[-0.5, 1.07, -0.12]}>
+            <sphereGeometry args={[0.05, 8, 8]} />
+            <meshStandardMaterial color="#fef08a" emissive="#fbbf24" emissiveIntensity={1.5} />
+          </mesh>
+          <group position={[-0.08, 0, 0.68]}>
+            <mesh position={[0, 0.22, 0]} castShadow>
+              <cylinderGeometry args={[0.03, 0.03, 0.4, 8]} />
+              <meshStandardMaterial color="#1e293b" metalness={0.7} />
+            </mesh>
+            <mesh position={[0, 0.05, 0]}>
+              <cylinderGeometry args={[0.25, 0.28, 0.04, 5]} />
+              <meshStandardMaterial color="#0f172a" />
+            </mesh>
+            <mesh position={[0, 0.44, 0]} castShadow>
+              <boxGeometry args={[0.48, 0.08, 0.46]} />
+              <meshStandardMaterial color="#334155" roughness={0.7} />
+            </mesh>
+            <mesh position={[0, 0.72, 0.2]} rotation={[0.1, 0, 0]} castShadow>
+              <boxGeometry args={[0.44, 0.52, 0.07]} />
+              <meshStandardMaterial color="#1e293b" roughness={0.6} />
+            </mesh>
+          </group>
+        </group>
+      )}
+
+      {/* 9. KỆ SÁCH GỖ SỒI OXFORD 5 TẦNG */}
+      {item.maVatPham === 'KE_SACH_OXFORD' && (
+        <group>
+          <mesh position={[0, 1.05, -0.22]} castShadow receiveShadow>
+            <boxGeometry args={[1.1, 2.1, 0.06]} />
+            <meshStandardMaterial color="#5c2d0c" roughness={0.6} />
+          </mesh>
+          <mesh position={[-0.52, 1.05, 0]} castShadow>
+            <boxGeometry args={[0.06, 2.1, 0.48]} />
+            <meshStandardMaterial color="#78350f" roughness={0.55} />
+          </mesh>
+          <mesh position={[0.52, 1.05, 0]} castShadow>
+            <boxGeometry args={[0.06, 2.1, 0.48]} />
+            <meshStandardMaterial color="#78350f" roughness={0.55} />
+          </mesh>
+          {[0.12, 0.58, 1.05, 1.52, 2.04].map((y, idx) => (
+            <mesh key={idx} position={[0, y, 0]} castShadow receiveShadow>
+              <boxGeometry args={[1.08, 0.06, 0.48]} />
+              <meshStandardMaterial color="#92400e" roughness={0.5} />
+            </mesh>
+          ))}
+          {[
+            { y: 0.74, colors: ['#1d4ed8', '#b91c1c', '#047857', '#d97706', '#4338ca'] },
+            { y: 1.21, colors: ['#be123c', '#0f766e', '#1e40af', '#a16207', '#334155'] },
+            { y: 1.68, colors: ['#0369a1', '#991b1b', '#15803d', '#b45309'] },
+          ].map((shelf, sIdx) => (
+            <group key={sIdx} position={[-0.36, shelf.y, 0.02]}>
+              {shelf.colors.map((c, bIdx) => (
+                <mesh key={bIdx} position={[bIdx * 0.11, 0, 0]} castShadow>
+                  <boxGeometry args={[0.085, 0.28 + (bIdx % 2) * 0.04, 0.32]} />
+                  <meshStandardMaterial color={c} roughness={0.6} />
+                </mesh>
+              ))}
+            </group>
+          ))}
+          <mesh position={[0.3, 2.16, 0.02]} castShadow>
+            <cylinderGeometry args={[0.1, 0.08, 0.16, 10]} />
+            <meshStandardMaterial color="#f8fafc" />
+          </mesh>
+          <mesh position={[0.3, 2.3, 0.02]}>
+            <dodecahedronGeometry args={[0.14, 0]} />
+            <meshStandardMaterial color="#16a34a" roughness={0.7} />
+          </mesh>
+        </group>
+      )}
+
+      {/* 10. ĐÀN GRAND PIANO CỔ ĐIỂN */}
+      {item.maVatPham === 'DAN_PIANO_CO_DIEN' && (
+        <group>
+          {[
+            [-0.55, 0.2],
+            [0.55, 0.2],
+            [0, -0.55],
+          ].map(([x, z], idx) => (
+            <mesh key={idx} position={[x, 0.34, z]} castShadow>
+              <cylinderGeometry args={[0.045, 0.03, 0.68, 10]} />
+              <meshStandardMaterial color="#0f172a" roughness={0.2} metalness={0.4} />
+            </mesh>
+          ))}
+          <mesh position={[0, 0.78, -0.1]} castShadow receiveShadow>
+            <boxGeometry args={[1.5, 0.28, 1.15]} />
+            <meshStandardMaterial color="#090d16" roughness={0.12} metalness={0.65} />
+          </mesh>
+          <mesh position={[0, 0.94, -0.15]}>
+            <boxGeometry args={[1.3, 0.04, 0.95]} />
+            <meshStandardMaterial color="#d97706" metalness={0.85} roughness={0.2} />
+          </mesh>
+          <mesh position={[0.15, 1.18, -0.1]} rotation={[0, 0, -0.35]} castShadow>
+            <boxGeometry args={[1.45, 0.04, 1.1]} />
+            <meshStandardMaterial color="#090d16" roughness={0.12} metalness={0.65} />
+          </mesh>
+          <mesh position={[0, 0.72, 0.52]} castShadow>
+            <boxGeometry args={[1.38, 0.08, 0.26]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.2} />
+          </mesh>
+          <mesh position={[0, 0.77, 0.46]}>
+            <boxGeometry args={[1.3, 0.03, 0.1]} />
+            <meshStandardMaterial color="#0f172a" />
+          </mesh>
+          <mesh position={[0, 0.1, 0.3]}>
+            <boxGeometry args={[0.25, 0.05, 0.12]} />
+            <meshStandardMaterial color="#facc15" metalness={0.9} />
+          </mesh>
+          <mesh position={[0, 0.36, 0.92]} castShadow>
+            <boxGeometry args={[0.78, 0.1, 0.38]} />
+            <meshStandardMaterial color="#1e293b" roughness={0.4} />
+          </mesh>
+          {[
+            [-0.32, 0.78],
+            [0.32, 0.78],
+            [-0.32, 1.06],
+            [0.32, 1.06],
+          ].map(([x, z], idx) => (
+            <mesh key={`pbench-${idx}`} position={[x, 0.18, z]}>
+              <cylinderGeometry args={[0.03, 0.025, 0.36, 8]} />
+              <meshStandardMaterial color="#0f172a" />
+            </mesh>
+          ))}
+        </group>
+      )}
+
+      {/* 11. TỦ LẠNH 2 CÁNH SIDE-BY-SIDE INOX */}
       {item.maVatPham === 'TU_LANH_2_CANH' && (
         <group>
-          <mesh position={[0, 0.95, 0]} castShadow>
-            <boxGeometry args={[0.88, 1.85, 0.72]} />
-            <meshStandardMaterial color="#e2e8f0" metalness={0.65} roughness={0.25} />
+          <mesh position={[0, 1.02, 0]} castShadow receiveShadow>
+            <boxGeometry args={[0.98, 2.04, 0.78]} />
+            <meshStandardMaterial color="#cbd5e1" metalness={0.75} roughness={0.22} />
           </mesh>
-          <mesh position={[0, 0.95, 0.37]}>
-            <boxGeometry args={[0.03, 1.75, 0.02]} />
+          <mesh position={[0, 1.25, 0.4]}>
+            <boxGeometry args={[0.025, 1.45, 0.02]} />
             <meshStandardMaterial color="#475569" />
+          </mesh>
+          <mesh position={[0, 0.55, 0.4]}>
+            <boxGeometry args={[0.94, 0.025, 0.02]} />
+            <meshStandardMaterial color="#475569" />
+          </mesh>
+          <mesh position={[-0.08, 1.25, 0.43]}>
+            <cylinderGeometry args={[0.015, 0.015, 0.65, 8]} />
+            <meshStandardMaterial color="#f8fafc" metalness={0.9} />
+          </mesh>
+          <mesh position={[0.08, 1.25, 0.43]}>
+            <cylinderGeometry args={[0.015, 0.015, 0.65, 8]} />
+            <meshStandardMaterial color="#f8fafc" metalness={0.9} />
+          </mesh>
+          <mesh position={[-0.26, 1.32, 0.4]}>
+            <boxGeometry args={[0.18, 0.28, 0.02]} />
+            <meshStandardMaterial color="#0f172a" emissive="#38bdf8" emissiveIntensity={0.4} />
           </mesh>
         </group>
       )}
 
+      {/* 12. BỂ CÁ THỦY SINH ĐÈN LED */}
       {item.maVatPham === 'BE_CA_CANH_LED' && (
         <group>
-          <mesh position={[0, 0.32, 0]} castShadow>
-            <boxGeometry args={[1.25, 0.58, 0.52]} />
-            <meshStandardMaterial color="#1e293b" />
+          <mesh position={[0, 0.38, 0]} castShadow receiveShadow>
+            <boxGeometry args={[1.45, 0.76, 0.56]} />
+            <meshStandardMaterial color="#1e293b" roughness={0.4} />
           </mesh>
-          <mesh position={[0, 0.85, 0]}>
-            <boxGeometry args={[1.18, 0.52, 0.46]} />
+          <mesh position={[0, 1.04, 0]}>
+            <boxGeometry args={[1.38, 0.56, 0.48]} />
             <meshStandardMaterial
               color="#0ea5e9"
               emissive="#0284c7"
-              emissiveIntensity={0.6}
+              emissiveIntensity={0.65}
               transparent
-              opacity={0.82}
+              opacity={0.78}
+              roughness={0.1}
+            />
+          </mesh>
+          <mesh position={[-0.32, 0.85, 0]}>
+            <dodecahedronGeometry args={[0.15, 0]} />
+            <meshStandardMaterial color="#475569" roughness={0.8} />
+          </mesh>
+          <mesh position={[0.25, 0.9, 0.05]}>
+            <dodecahedronGeometry args={[0.18, 0]} />
+            <meshStandardMaterial color="#15803d" roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 1.38, 0]}>
+            <boxGeometry args={[1.25, 0.04, 0.12]} />
+            <meshStandardMaterial color="#e2e8f0" metalness={0.8} />
+          </mesh>
+        </group>
+      )}
+
+      {/* 13. CHẬU CÂY MONSTERA TRONG NHÀ */}
+      {item.maVatPham === 'CAY_MONSTERA' && (
+        <group>
+          <mesh position={[0, 0.14, 0]} castShadow>
+            <cylinderGeometry args={[0.24, 0.28, 0.28, 8]} />
+            <meshStandardMaterial color="#92400e" roughness={0.6} />
+          </mesh>
+          <mesh position={[0, 0.44, 0]} castShadow>
+            <cylinderGeometry args={[0.28, 0.22, 0.42, 16]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.3} />
+          </mesh>
+          <mesh position={[0, 0.85, 0]} castShadow>
+            <dodecahedronGeometry args={[0.38, 1]} />
+            <meshStandardMaterial color="#15803d" roughness={0.65} />
+          </mesh>
+          <mesh position={[-0.22, 1.02, 0.15]} castShadow>
+            <dodecahedronGeometry args={[0.26, 1]} />
+            <meshStandardMaterial color="#16a34a" roughness={0.65} />
+          </mesh>
+          <mesh position={[0.22, 0.96, -0.14]} castShadow>
+            <dodecahedronGeometry args={[0.28, 1]} />
+            <meshStandardMaterial color="#22c55e" roughness={0.65} />
+          </mesh>
+        </group>
+      )}
+
+      {/* 14. ĐÈN CÂY ĐỌC SÁCH ÁNH VÀNG */}
+      {item.maVatPham === 'DEN_CAY_PHONG_KHACH' && (
+        <group>
+          <mesh position={[0, 0.05, 0]} castShadow>
+            <cylinderGeometry args={[0.22, 0.24, 0.1, 16]} />
+            <meshStandardMaterial color="#e2e8f0" roughness={0.2} />
+          </mesh>
+          <mesh position={[0, 0.92, 0]} castShadow>
+            <cylinderGeometry args={[0.025, 0.03, 1.75, 10]} />
+            <meshStandardMaterial color="#d97706" metalness={0.85} roughness={0.2} />
+          </mesh>
+          <mesh position={[0, 1.78, 0]} castShadow>
+            <cylinderGeometry args={[0.22, 0.34, 0.34, 16]} />
+            <meshStandardMaterial
+              color="#fef3c7"
+              emissive="#f59e0b"
+              emissiveIntensity={0.85}
+              roughness={0.6}
             />
           </mesh>
         </group>
       )}
 
-      {item.maVatPham === 'CAY_MONSTERA' && (
-        <group>
-          <mesh position={[0, 0.24, 0]} castShadow>
-            <cylinderGeometry args={[0.24, 0.18, 0.45, 12]} />
-            <meshStandardMaterial color="#f8fafc" roughness={0.4} />
-          </mesh>
-          <mesh position={[0, 0.72, 0]} castShadow>
-            <dodecahedronGeometry args={[0.38, 1]} />
-            <meshStandardMaterial color="#15803d" roughness={0.7} />
-          </mesh>
-        </group>
-      )}
-
-      {item.maVatPham === 'DEN_CAY_PHONG_KHACH' && (
-        <group>
-          <mesh position={[0, 0.75, 0]} castShadow>
-            <cylinderGeometry args={[0.04, 0.16, 1.45, 10]} />
-            <meshStandardMaterial color="#475569" metalness={0.6} />
-          </mesh>
-          <mesh position={[0, 1.52, 0]}>
-            <coneGeometry args={[0.32, 0.38, 14]} />
-            <meshStandardMaterial color="#fef08a" emissive="#f59e0b" emissiveIntensity={1.1} />
-          </mesh>
-        </group>
-      )}
-
+      {/* 15. BÀN GAMING CYBERPUNK RGB */}
       {item.maVatPham === 'SOFA_GAMING_RGB' && (
         <group>
-          {/* Bàn Gaming mặt đen viền LED RGB */}
-          <mesh position={[0, 0.42, 0]} castShadow>
-            <boxGeometry args={[1.55, 0.72, 0.72]} />
-            <meshStandardMaterial color="#0f172a" roughness={0.25} metalness={0.5} />
+          {[-0.68, 0.68].map((x, idx) => (
+            <mesh key={idx} position={[x, 0.38, 0]} castShadow>
+              <boxGeometry args={[0.08, 0.74, 0.68]} />
+              <meshStandardMaterial color="#0f172a" metalness={0.7} />
+            </mesh>
+          ))}
+          <mesh position={[0, 0.76, 0]} castShadow receiveShadow>
+            <boxGeometry args={[1.65, 0.06, 0.78]} />
+            <meshStandardMaterial color="#090d16" roughness={0.3} metalness={0.4} />
           </mesh>
-          <mesh position={[0, 0.79, 0]}>
-            <boxGeometry args={[1.58, 0.03, 0.75]} />
-            <meshStandardMaterial color="#ec4899" emissive="#ec4899" emissiveIntensity={1.3} />
+          <mesh position={[0, 0.76, 0]}>
+            <boxGeometry args={[1.68, 0.025, 0.8]} />
+            <meshStandardMaterial color="#ec4899" emissive="#ec4899" emissiveIntensity={1.4} />
           </mesh>
-          {/* Màn hình cong Ultrawide */}
-          <mesh position={[0, 1.08, -0.15]} castShadow>
-            <boxGeometry args={[1.15, 0.46, 0.06]} />
-            <meshStandardMaterial color="#06b6d4" emissive="#0284c7" emissiveIntensity={0.85} />
+          <mesh position={[-0.1, 1.08, -0.18]} castShadow>
+            <boxGeometry args={[1.05, 0.44, 0.05]} />
+            <meshStandardMaterial color="#06b6d4" emissive="#0284c7" emissiveIntensity={0.95} />
           </mesh>
-          {/* Thùng PC RGB */}
-          <mesh position={[0.55, 1.02, 0]} castShadow>
-            <boxGeometry args={[0.24, 0.44, 0.42]} />
+          <mesh position={[0.6, 1.02, -0.05]} castShadow>
+            <boxGeometry args={[0.24, 0.46, 0.44]} />
+            <meshStandardMaterial color="#1e293b" metalness={0.7} />
+          </mesh>
+          <mesh position={[0.48, 1.02, -0.05]}>
+            <planeGeometry args={[0.35, 0.35]} />
+            <meshStandardMaterial color="#a855f7" emissive="#9333ea" emissiveIntensity={1.2} />
+          </mesh>
+          <group position={[-0.1, 0, 0.68]}>
+            <mesh position={[0, 0.24, 0]}>
+              <cylinderGeometry args={[0.03, 0.03, 0.42, 8]} />
+              <meshStandardMaterial color="#0f172a" />
+            </mesh>
+            <mesh position={[0, 0.46, 0]} castShadow>
+              <boxGeometry args={[0.52, 0.1, 0.5]} />
+              <meshStandardMaterial color="#1e293b" />
+            </mesh>
+            <mesh position={[0, 0.82, 0.2]} castShadow>
+              <boxGeometry args={[0.48, 0.68, 0.09]} />
+              <meshStandardMaterial color="#be123c" roughness={0.4} />
+            </mesh>
+          </group>
+        </group>
+      )}
+
+      {/* 16. TỦ QUẦN ÁO CÁNH KÍNH CAO CẤP */}
+      {item.maVatPham === 'TU_QUAN_AO_KINH' && (
+        <group>
+          <mesh position={[0, 1.05, 0]} castShadow receiveShadow>
+            <boxGeometry args={[1.55, 2.1, 0.68]} />
+            <meshStandardMaterial color="#1e293b" roughness={0.3} metalness={0.4} />
+          </mesh>
+          <mesh position={[-0.37, 1.05, 0.35]}>
+            <boxGeometry args={[0.7, 1.94, 0.03]} />
+            <meshStandardMaterial
+              color="#bae6fd"
+              emissive="#fbbf24"
+              emissiveIntensity={0.35}
+              transparent
+              opacity={0.6}
+            />
+          </mesh>
+          <mesh position={[0.37, 1.05, 0.35]}>
+            <boxGeometry args={[0.7, 1.94, 0.03]} />
+            <meshStandardMaterial
+              color="#bae6fd"
+              emissive="#fbbf24"
+              emissiveIntensity={0.35}
+              transparent
+              opacity={0.6}
+            />
+          </mesh>
+          <mesh position={[-0.06, 1.05, 0.38]}>
+            <boxGeometry args={[0.02, 0.65, 0.02]} />
+            <meshStandardMaterial color="#0f172a" />
+          </mesh>
+          <mesh position={[0.06, 1.05, 0.38]}>
+            <boxGeometry args={[0.02, 0.65, 0.02]} />
+            <meshStandardMaterial color="#0f172a" />
+          </mesh>
+        </group>
+      )}
+
+      {/* 17. QUẦY PHA CAFE & ESPRESSO BAR */}
+      {item.maVatPham === 'MAY_PHA_CAFE_MINI' && (
+        <group>
+          <mesh position={[0, 0.45, 0]} castShadow receiveShadow>
+            <boxGeometry args={[1.45, 0.88, 0.7]} />
+            <meshStandardMaterial color="#78350f" roughness={0.45} />
+          </mesh>
+          <mesh position={[0, 0.91, 0]}>
+            <boxGeometry args={[1.5, 0.06, 0.74]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.18} />
+          </mesh>
+          <mesh position={[-0.28, 1.15, 0]} castShadow>
+            <boxGeometry args={[0.45, 0.42, 0.38]} />
+            <meshStandardMaterial color="#dc2626" metalness={0.65} roughness={0.2} />
+          </mesh>
+          <mesh position={[0.28, 1.12, 0]} castShadow>
+            <cylinderGeometry args={[0.1, 0.12, 0.36, 12]} />
             <meshStandardMaterial color="#1e293b" metalness={0.7} />
           </mesh>
         </group>
       )}
 
-      {item.maVatPham === 'TU_QUAN_AO_KINH' && (
-        <group>
-          <mesh position={[0, 0.95, 0]} castShadow>
-            <boxGeometry args={[1.35, 1.88, 0.65]} />
-            <meshStandardMaterial color="#1e293b" roughness={0.3} metalness={0.4} />
-          </mesh>
-          <mesh position={[0, 0.95, 0.33]}>
-            <boxGeometry args={[1.22, 1.72, 0.03]} />
-            <meshStandardMaterial
-              color="#bae6fd"
-              emissive="#fbbf24"
-              emissiveIntensity={0.3}
-              transparent
-              opacity={0.65}
-            />
-          </mesh>
-        </group>
-      )}
-
-      {item.maVatPham === 'MAY_PHA_CAFE_MINI' && (
-        <group>
-          <mesh position={[0, 0.45, 0]} castShadow>
-            <boxGeometry args={[1.35, 0.88, 0.68]} />
-            <meshStandardMaterial color="#451a03" roughness={0.45} />
-          </mesh>
-          <mesh position={[0, 0.91, 0]}>
-            <boxGeometry args={[1.4, 0.05, 0.72]} />
-            <meshStandardMaterial color="#f8fafc" roughness={0.18} />
-          </mesh>
-          <mesh position={[-0.25, 1.15, 0]} castShadow>
-            <boxGeometry args={[0.45, 0.42, 0.38]} />
-            <meshStandardMaterial color="#dc2626" metalness={0.6} roughness={0.2} />
-          </mesh>
-        </group>
-      )}
-
+      {/* 18. THẢM HOÀNG GIA ĐỎ VIỀN VÀNG */}
       {item.maVatPham === 'THAM_HOANG_GIA_DO' && (
         <group>
+          <mesh position={[0, 0.016, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[3.4, 2.4]} />
+            <meshStandardMaterial color="#991b1b" roughness={0.8} />
+          </mesh>
           <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[2.5, 1.85]} />
-            <meshStandardMaterial color="#991b1b" roughness={0.75} />
+            <planeGeometry args={[3.0, 2.0]} />
+            <meshStandardMaterial color="#b91c1c" roughness={0.8} />
           </mesh>
           <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.85, 0.95, 24]} />
+            <ringGeometry args={[0.72, 0.84, 28]} />
             <meshStandardMaterial color="#facc15" metalness={0.6} />
           </mesh>
         </group>
@@ -921,23 +1479,12 @@ export function PlayerStarterHouseCap4({
           />
         </mesh>
         {showInteriorCutaway && (
-          <Html position={[0, 0.85, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
-            <div
-              style={{
-                padding: '2px 8px',
-                backgroundColor: 'rgba(15, 23, 42, 0.88)',
-                color: '#fef08a',
-                fontWeight: 900,
-                fontSize: '10px',
-                borderRadius: '999px',
-                border: '1px solid #fbbf24',
-                whiteSpace: 'nowrap',
-                fontFamily: 'system-ui, sans-serif',
-              }}
-            >
-              🚪 [E] Vào nhà
-            </div>
-          </Html>
+          <KeyPromptBadge
+            keyLabel="E"
+            position={[0, 0.85, 0]}
+            color="#fbbf24"
+            onClick={onClickManageHouse}
+          />
         )}
       </group>
 
@@ -1033,79 +1580,27 @@ export function PlayerStarterHouseCap4({
           <HouseFurnitureItem3D
             key={`${item.maVatPham}-${item.toaDoLuoiX}-${item.toaDoLuoiZ}-${idx}`}
             item={item}
+            itemScale={0.85}
           />
         ))}
 
-        {/* Đèn trần ấm áp chiếu sáng nội thất */}
+        {/* Đèn trần ấm áp chiếu sáng nội thất (chỉ bật khi bước vào nhà xem nội thất) */}
         <pointLight
           position={[0, 2.6, 0]}
           color={isCyberLoft ? '#a855f7' : '#fef08a'}
           intensity={0.95}
           distance={10}
+          visible={showInteriorCutaway}
         />
 
         {/* NÚT MUA & TRANG TRÍ NỘI THẤT KHI BƯỚC VÀO TRONG NHÀ */}
         {showInteriorCutaway && isMyHouse && (
-          <Html
+          <KeyPromptBadge
+            keyLabel="E"
             position={[0, 2.15, -0.3]}
-            center
-            zIndexRange={[15, 0]}
-            style={{ pointerEvents: 'auto' }}
-          >
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onClickManageHouse?.();
-              }}
-              style={{
-                padding: '6px 14px',
-                background: 'linear-gradient(135deg, #f59e0b, #ea580c)',
-                color: '#ffffff',
-                fontWeight: 900,
-                fontSize: '12px',
-                borderRadius: '999px',
-                border: '2px solid #fef08a',
-                boxShadow: '0 8px 22px rgba(234, 88, 12, 0.65)',
-                whiteSpace: 'nowrap',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontFamily: 'system-ui, sans-serif',
-              }}
-            >
-              <span>🛋️</span>
-              <span>Shop Nội Thất & Mẫu Nhà ({activeFurniture.length} món)</span>
-            </button>
-          </Html>
-        )}
-
-        {/* KHI BƯỚC VÀO THĂM NHÀ BẠN BÈ ĐANG ONLINE */}
-        {showInteriorCutaway && !isMyHouse && (
-          <Html
-            position={[0, 2.15, -0.3]}
-            center
-            zIndexRange={[15, 0]}
-            style={{ pointerEvents: 'none' }}
-          >
-            <div
-              style={{
-                padding: '5px 12px',
-                background: 'linear-gradient(135deg, #059669, #0284c7)',
-                color: '#ffffff',
-                fontWeight: 800,
-                fontSize: '11px',
-                borderRadius: '999px',
-                border: '1.5px solid #a7f3d0',
-                boxShadow: '0 6px 18px rgba(0,0,0,0.45)',
-                whiteSpace: 'nowrap',
-                fontFamily: 'system-ui, sans-serif',
-              }}
-            >
-              👀 Đang xem nội thất nhà của {ownerName} ({activeFurniture.length} món)
-            </div>
-          </Html>
+            color="#f59e0b"
+            onClick={onClickManageHouse}
+          />
         )}
       </group>
 
@@ -1306,31 +1801,7 @@ export function PlayerStarterHouseCap4({
       <FlowerBush position={[-2.2, 0, -2.4]} color="#fbbf24" />
       <FlowerBush position={[2.2, 0, -2.4]} color="#ec4899" />
 
-      {/* 8. NHÃN TRÊN MÁI NHÀ */}
-      <Html
-        position={[0, isMinimalist || isLuxuryMansion || isCyberLoft ? 6.5 : 5.7, -1.2]}
-        center
-        zIndexRange={[10, 0]}
-        style={{ pointerEvents: 'none' }}
-      >
-        <div
-          onClick={onClickManageHouse}
-          style={{
-            padding: '4px 12px',
-            backgroundColor: isMyHouse ? 'rgba(185, 28, 28, 0.9)' : 'rgba(4, 120, 87, 0.85)',
-            color: '#ffffff',
-            fontWeight: 800,
-            fontSize: '11px',
-            borderRadius: '999px',
-            border: isMyHouse ? '1.5px solid #fef08a' : '1px solid #a7f3d0',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)',
-            whiteSpace: 'nowrap',
-            fontFamily: 'system-ui, sans-serif',
-          }}
-        >
-          {isMyHouse ? `🏡 ${displayTitle}` : `🏘️ ${ownerName}`}
-        </div>
-      </Html>
+      {/* 8. NHÃN TRÊN MÁI NHÀ - ĐÃ TỐI ƯU GỠ BỎ ĐỂ KHÔNG BỊ RÁC CHỮ TRÊN BẦU TRỜI */}
     </group>
   );
 }
@@ -2099,24 +2570,7 @@ export function FishingLakeAndPier({
           <boxGeometry args={[2.2, 0.9, 0.16]} />
           <meshStandardMaterial color="#b45309" roughness={0.6} />
         </mesh>
-        <Html position={[0, 2.55, 0.1]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
-          <div
-            style={{
-              padding: '4px 12px',
-              backgroundColor: '#0369a1',
-              color: '#fff',
-              fontWeight: 800,
-              fontSize: '11px',
-              borderRadius: '10px',
-              border: '1.5px solid #bae6fd',
-              whiteSpace: 'nowrap',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
-              fontFamily: 'system-ui, sans-serif',
-            }}
-          >
-            🎣 BẾN CẢNG CÂU CÁ (NHẤN F)
-          </div>
-        </Html>
+        <KeyPromptBadge keyLabel="F" position={[0, 2.55, 0.1]} color="#0284c7" />
       </group>
     </group>
   );
@@ -2225,25 +2679,6 @@ export function PlaySchoolBuilding({ position = [-35, 0, 36] }: { position?: [nu
         <coneGeometry args={[2.2, 2.2, 4]} />
         <meshStandardMaterial color="#7f1d1d" roughness={0.4} />
       </mesh>
-
-      <Html position={[0, 7.6, 4.5]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
-        <div
-          style={{
-            padding: '5px 14px',
-            backgroundColor: '#991b1b',
-            color: '#fef08a',
-            fontWeight: 900,
-            fontSize: '12px',
-            borderRadius: '12px',
-            border: '2px solid #fef08a',
-            boxShadow: '0 6px 18px rgba(0, 0, 0, 0.45)',
-            whiteSpace: 'nowrap',
-            fontFamily: 'system-ui, sans-serif',
-          }}
-        >
-          🏫 KAIA ROYAL ACADEMY
-        </div>
-      </Html>
     </group>
   );
 }
@@ -2298,25 +2733,6 @@ export function CityLibraryBuilding({ position = [-35, 0, 13] }: { position?: [n
           <meshStandardMaterial color="#0f172a" roughness={0.15} metalness={0.7} />
         </mesh>
       ))}
-
-      <Html position={[0, 7.4, 4.0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
-        <div
-          style={{
-            padding: '4px 12px',
-            backgroundColor: '#1e3a8a',
-            color: '#fff',
-            fontWeight: 800,
-            fontSize: '11px',
-            borderRadius: '10px',
-            border: '1.5px solid #93c5fd',
-            whiteSpace: 'nowrap',
-            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.45)',
-            fontFamily: 'system-ui, sans-serif',
-          }}
-        >
-          📚 OXFORD CENTRAL LIBRARY
-        </div>
-      </Html>
     </group>
   );
 }
@@ -2407,25 +2823,6 @@ export function PlazaCafe({
           />
         </mesh>
       </group>
-
-      <Html position={[0, 5.8, 3.9]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
-        <div
-          style={{
-            padding: '3px 10px',
-            backgroundColor: 'rgba(159, 18, 57, 0.9)',
-            color: '#fffbeb',
-            fontWeight: 800,
-            fontSize: '10px',
-            borderRadius: '999px',
-            border: '1px solid #fde68a',
-            whiteSpace: 'nowrap',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
-            fontFamily: 'system-ui, sans-serif',
-          }}
-        >
-          ☕ London Cafe
-        </div>
-      </Html>
 
       {/* Bàn ghế gỗ & Dù che nắng ngoài trời */}
       {[-2.8, 2.8].map((xOffset, i) => (
@@ -2520,25 +2917,6 @@ export function PizzaBurgerDiner({
           />
         </mesh>
       </group>
-
-      <Html position={[0, 5.4, 3.7]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
-        <div
-          style={{
-            padding: '3px 10px',
-            backgroundColor: 'rgba(185, 28, 28, 0.9)',
-            color: '#fef08a',
-            fontWeight: 800,
-            fontSize: '10px',
-            borderRadius: '999px',
-            border: '1px solid #fef08a',
-            whiteSpace: 'nowrap',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)',
-            fontFamily: 'system-ui, sans-serif',
-          }}
-        >
-          🍔 Burger Diner
-        </div>
-      </Html>
     </group>
   );
 }
@@ -2617,25 +2995,6 @@ export function FashionBoutiqueBuilding({
           />
         </mesh>
       </group>
-
-      <Html position={[0, 6.2, 3.8]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
-        <div
-          style={{
-            padding: '3px 10px',
-            backgroundColor: 'rgba(190, 24, 93, 0.9)',
-            color: '#fdf2f8',
-            fontWeight: 800,
-            fontSize: '10px',
-            borderRadius: '999px',
-            border: '1px solid #fbcfe8',
-            whiteSpace: 'nowrap',
-            boxShadow: '0 4px 12px rgba(190, 24, 93, 0.4)',
-            fontFamily: 'system-ui, sans-serif',
-          }}
-        >
-          👗 Fashion Boutique
-        </div>
-      </Html>
     </group>
   );
 }
@@ -2734,25 +3093,6 @@ export function AutoShowroomBuilding({
           />
         </mesh>
       </group>
-
-      <Html position={[0, 6.4, 4.1]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
-        <div
-          style={{
-            padding: '3px 10px',
-            backgroundColor: 'rgba(3, 105, 161, 0.9)',
-            color: '#f0f9ff',
-            fontWeight: 800,
-            fontSize: '10px',
-            borderRadius: '999px',
-            border: '1px solid #7dd3fc',
-            whiteSpace: 'nowrap',
-            boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)',
-            fontFamily: 'system-ui, sans-serif',
-          }}
-        >
-          🚗 Auto Showroom
-        </div>
-      </Html>
     </group>
   );
 }
@@ -2793,25 +3133,6 @@ export function SuperMartBuilding({ position = [35, 0, -35] }: { position?: [num
         <boxGeometry args={[5.6, 0.2, 1.6]} />
         <meshStandardMaterial color="#334155" metalness={0.6} />
       </mesh>
-
-      <Html position={[0, 6.2, 4.3]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
-        <div
-          style={{
-            padding: '5px 14px',
-            backgroundColor: '#3730a3',
-            color: '#fff',
-            fontWeight: 800,
-            fontSize: '12px',
-            borderRadius: '10px',
-            border: '1.5px solid #a5b4fc',
-            whiteSpace: 'nowrap',
-            boxShadow: '0 4px 18px rgba(0, 0, 0, 0.5)',
-            fontFamily: 'system-ui, sans-serif',
-          }}
-        >
-          🛒 METRO HYPERMARKET
-        </div>
-      </Html>
     </group>
   );
 }
@@ -2856,25 +3177,6 @@ export function CinemaTheaterBuilding({ position = [35, 0, -13] }: { position?: 
         <planeGeometry args={[3.4, 3.6]} />
         <meshStandardMaterial color="#991b1b" roughness={0.7} />
       </mesh>
-
-      <Html position={[0, 6.2, 4.1]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
-        <div
-          style={{
-            padding: '4px 12px',
-            backgroundColor: '#991b1b',
-            color: '#fef08a',
-            fontWeight: 900,
-            fontSize: '12px',
-            borderRadius: '10px',
-            border: '1.5px solid #fef08a',
-            whiteSpace: 'nowrap',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
-            fontFamily: 'system-ui, sans-serif',
-          }}
-        >
-          🎬 GRAND IMAX CINEMA
-        </div>
-      </Html>
     </group>
   );
 }
@@ -2987,7 +3289,7 @@ export function CozySuburbHouse({
           <meshStandardMaterial color={wallColor} roughness={0.5} />
         </mesh>
       </RigidBody>
-      <mesh position={[0, 0.45, 0]} castShadow>
+      <mesh position={[0, 0.45, 0]}>
         <boxGeometry args={[6.55, 0.9, 5.95]} />
         <meshStandardMaterial color="#64748b" roughness={0.8} />
       </mesh>
@@ -3001,7 +3303,7 @@ export function CozySuburbHouse({
           roughness={0.55}
         />
       </mesh>
-      <mesh position={[1.8, 5.6, -1.0]} castShadow>
+      <mesh position={[1.8, 5.6, -1.0]}>
         <boxGeometry args={[0.7, 1.8, 0.7]} />
         <meshStandardMaterial color="#7c2d12" roughness={0.85} />
       </mesh>
@@ -3011,7 +3313,7 @@ export function CozySuburbHouse({
         <boxGeometry args={[1.35, 2.3, 0.1]} />
         <meshStandardMaterial color="#451a03" roughness={0.6} />
       </mesh>
-      <mesh position={[0, 2.65, 3.35]} castShadow>
+      <mesh position={[0, 2.65, 3.35]}>
         <boxGeometry args={[2.2, 0.16, 1.0]} />
         <meshStandardMaterial color={roofColor} />
       </mesh>
@@ -3031,11 +3333,11 @@ export function CozySuburbHouse({
       ))}
 
       {/* Hàng rào gỗ trắng trước sân */}
-      <mesh position={[-2.2, 0.45, 4.5]} castShadow>
+      <mesh position={[-2.2, 0.45, 4.5]}>
         <boxGeometry args={[2.4, 0.85, 0.14]} />
         <meshStandardMaterial color="#f8fafc" roughness={0.4} />
       </mesh>
-      <mesh position={[2.2, 0.45, 4.5]} castShadow>
+      <mesh position={[2.2, 0.45, 4.5]}>
         <boxGeometry args={[2.4, 0.85, 0.14]} />
         <meshStandardMaterial color="#f8fafc" roughness={0.4} />
       </mesh>
@@ -3096,23 +3398,6 @@ export function PlaygroundPark({ position = [-33, 0, -8] }: { position?: [number
           <boxGeometry args={[3.8, 0.75, 0.35]} />
           <meshStandardMaterial color="#7e22ce" roughness={0.4} />
         </mesh>
-        <Html position={[0, 4.4, 0]} center>
-          <div
-            style={{
-              background: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
-              color: '#fff',
-              padding: '3px 10px',
-              borderRadius: '999px',
-              fontSize: '10px',
-              fontWeight: 800,
-              whiteSpace: 'nowrap',
-              border: '1.5px solid #fef08a',
-              boxShadow: '0 4px 12px rgba(236,72,153,0.45)',
-            }}
-          >
-            🎠 KHU VUI CHƠI SMILE PARK
-          </div>
-        </Html>
       </group>
 
       {/* 1. Đu Quay Ngựa Gỗ Hoàng Gia (Royal Carousel) */}
@@ -3345,24 +3630,6 @@ export function WonderlandAmusementPark({
             );
           })}
         </group>
-
-        <Html position={[0, 17.8, 0]} center>
-          <div
-            style={{
-              background: 'linear-gradient(135deg, #db2777, #7c3aed)',
-              color: '#ffffff',
-              padding: '4px 12px',
-              borderRadius: '999px',
-              fontSize: '11px',
-              fontWeight: 900,
-              whiteSpace: 'nowrap',
-              border: '2px solid #fde047',
-              boxShadow: '0 6px 18px rgba(219,39,119,0.55)',
-            }}
-          >
-            🎡 WONDERLAND AMUSEMENT PARK
-          </div>
-        </Html>
       </group>
 
       {/* 2. THÁP TÊN LỬA XOAY VŨ TRỤ (SPACE ROCKET SPINNER) */}
@@ -3568,35 +3835,35 @@ export function CartoonTree({
   return (
     <group position={position} scale={scale}>
       {/* Bồn gạch bao quanh gốc cây */}
-      <mesh position={[0, 0.12, 0]} receiveShadow castShadow>
-        <cylinderGeometry args={[0.58, 0.62, 0.24, 12]} />
+      <mesh position={[0, 0.12, 0]} receiveShadow>
+        <cylinderGeometry args={[0.58, 0.62, 0.24, 10]} />
         <meshStandardMaterial color="#94a3b8" roughness={0.8} />
       </mesh>
       <mesh position={[0, 0.25, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.5, 12]} />
+        <circleGeometry args={[0.5, 10]} />
         <meshStandardMaterial color="#451a03" roughness={0.95} />
       </mesh>
 
       {/* Thân cây gỗ sồi và nhánh cây */}
-      <mesh position={[0, 1.05, 0]} castShadow>
-        <cylinderGeometry args={[0.18, 0.3, 2.0, 10]} />
+      <mesh position={[0, 1.05, 0]}>
+        <cylinderGeometry args={[0.18, 0.3, 2.0, 8]} />
         <meshStandardMaterial color="#5c3a21" roughness={0.9} />
       </mesh>
 
-      {/* Tán lá đa tầng nhiều sắc độ xanh rừng tự nhiên */}
+      {/* Tán lá đa tầng nhiều sắc độ xanh rừng tự nhiên (chỉ 1 tán chính castShadow để tối ưu GPU) */}
       <mesh position={[0, 2.25, 0]} castShadow receiveShadow>
         <dodecahedronGeometry args={[1.25, 1]} />
         <meshStandardMaterial color="#2d6a4f" roughness={0.75} />
       </mesh>
-      <mesh position={[-0.55, 2.0, 0.35]} castShadow>
+      <mesh position={[-0.55, 2.0, 0.35]}>
         <dodecahedronGeometry args={[0.85, 1]} />
         <meshStandardMaterial color="#40916c" roughness={0.75} />
       </mesh>
-      <mesh position={[0.55, 2.1, -0.3]} castShadow>
+      <mesh position={[0.55, 2.1, -0.3]}>
         <dodecahedronGeometry args={[0.9, 1]} />
         <meshStandardMaterial color="#1b4332" roughness={0.8} />
       </mesh>
-      <mesh position={[0, 3.05, 0]} castShadow>
+      <mesh position={[0, 3.05, 0]}>
         <dodecahedronGeometry args={[0.92, 1]} />
         <meshStandardMaterial color="#52b788" roughness={0.7} />
       </mesh>
@@ -3616,7 +3883,7 @@ export function FlowerBush({
 }) {
   return (
     <group position={position}>
-      <mesh position={[0, 0.24, 0]} castShadow>
+      <mesh position={[0, 0.24, 0]}>
         <dodecahedronGeometry args={[0.42, 1]} />
         <meshStandardMaterial color="#2d6a4f" roughness={0.85} />
       </mesh>

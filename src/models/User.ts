@@ -35,6 +35,18 @@ export interface IUser extends Document {
 // Alias định danh hồ sơ người chơi theo kiến trúc dự án game
 export type IHoSoNguoiChoi = IUser;
 
+/**
+ * Hàm random mã phòng mới định dạng M7KQ-XXXX (4 ký tự in hoa/số ngẫu nhiên)
+ */
+export function generateRoomId(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 4; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `M7KQ-${code}`;
+}
+
 const TuiDoItemSchema = new Schema<ITuiDoItem>(
   {
     maVatPham: {
@@ -104,7 +116,7 @@ const UserSchema: Schema<IUser> = new Schema(
     },
     roomId: {
       type: String,
-      default: () => 'M7KQ-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+      default: () => generateRoomId(),
     },
     // Trường kinh tế & kỹ năng ngôn ngữ
     diemKinhNghiem: {

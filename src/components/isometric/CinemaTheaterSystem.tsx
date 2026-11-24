@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Html } from './SafeHtml';
+import { KeyPromptBadge } from './KeyPromptBadge';
 import { FashionAvatar } from './FashionAvatar';
 import useMultiplayerStore from '@/stores/useMultiplayerStore';
 import RemotePlayer from './RemotePlayer';
@@ -275,29 +276,12 @@ export function Cinema3DScene({
             avatarStyle="suit"
             hatStyle="beret"
           />
-          <Html position={[0, 2.35, 0]} center zIndexRange={[14, 0]}>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenTicketBox();
-              }}
-              style={{
-                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                color: '#0f172a',
-                padding: '4px 12px',
-                borderRadius: '999px',
-                fontSize: '11px',
-                fontWeight: 900,
-                border: '1.5px solid #fef08a',
-                boxShadow: '0 4px 14px rgba(245, 158, 11, 0.6)',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              🎟️ Quầy Mua Vé & Chọn Phim YouTube
-            </button>
-          </Html>
+          <KeyPromptBadge
+            keyLabel="E"
+            position={[0, 2.35, 0]}
+            color="#f59e0b"
+            onClick={onOpenTicketBox}
+          />
         </group>
       </group>
 

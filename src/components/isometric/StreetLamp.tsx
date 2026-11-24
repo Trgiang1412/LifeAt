@@ -13,25 +13,34 @@ interface StreetLampProps {
 export default function StreetLamp({ position, rotationY = 0 }: StreetLampProps) {
   const bulbRef = useRef<THREE.MeshStandardMaterial>(null);
   const lightRef = useRef<THREE.PointLight>(null);
+  const checkAccumulatorRef = useRef<number>(Math.random() * 0.2);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
+    checkAccumulatorRef.current += delta;
+    if (checkAccumulatorRef.current < 0.2) return;
+    checkAccumulatorRef.current = 0;
+
     const nightMix = useDayNightCycle.getState().nightMix;
+    const isNight = nightMix > 0.05;
 
     // Bóng đèn emissive tự tăng cường độ ban đêm
     if (bulbRef.current) {
-      bulbRef.current.emissiveIntensity = nightMix * 3.5;
+      bulbRef.current.emissiveIntensity = isNight ? nightMix * 3.5 : 0;
     }
 
-    // Bật pointLight tỏa ánh sáng vàng ấm xuống mặt đường
+    // Tắt hoàn toàn pointLight vào ban ngày để giảm draw calls và shader computations
     if (lightRef.current) {
-      lightRef.current.intensity = nightMix * 4.5;
+      lightRef.current.visible = isNight;
+      if (isNight) {
+        lightRef.current.intensity = nightMix * 4.5;
+      }
     }
   });
 
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
       {/* Đế đèn */}
-      <mesh position={[0, 0.15, 0]} castShadow>
+      <mesh position={[0, 0.15, 0]}>
         <cylinderGeometry args={[0.22, 0.28, 0.3, 8]} />
         <meshStandardMaterial color="#2d3748" roughness={0.7} metalness={0.8} />
       </mesh>
@@ -43,7 +52,7 @@ export default function StreetLamp({ position, rotationY = 0 }: StreetLampProps)
       </mesh>
 
       {/* Nhánh vươn ngang */}
-      <mesh position={[0.3, 3.4, 0]} rotation={[0, 0, Math.PI / 4]} castShadow>
+      <mesh position={[0.3, 3.4, 0]} rotation={[0, 0, Math.PI / 4]}>
         <cylinderGeometry args={[0.05, 0.05, 0.7, 8]} />
         <meshStandardMaterial color="#1a202c" roughness={0.6} metalness={0.9} />
       </mesh>

@@ -82,6 +82,7 @@ export const FashionAvatar = forwardRef<FashionAvatarRef, FashionAvatarProps>(fu
   const sneakerColor = shoeColor || primaryColor;
   const skinTone = '#ffedd5';
   const isMetallicOutfit = avatarStyle === 'royal' || avatarStyle === 'cyberpunk';
+  const shouldCastShadow = !isNpc;
 
   return (
     <group ref={meshGroupRef} scale={[scale, scale, scale]}>
@@ -95,7 +96,7 @@ export const FashionAvatar = forwardRef<FashionAvatarRef, FashionAvatarProps>(fu
       <group position={[0, 0, 0]}>
         {/* CHÂN TRÁI */}
         <group ref={leftLegRef} position={[-0.13, 0.44, 0]}>
-          <mesh position={[0, 0, 0]} castShadow>
+          <mesh position={[0, 0, 0]} castShadow={shouldCastShadow}>
             <capsuleGeometry args={[0.075, 0.38, 8, 14]} />
             <meshStandardMaterial color={legPantsColor} roughness={0.6} />
           </mesh>
@@ -104,11 +105,11 @@ export const FashionAvatar = forwardRef<FashionAvatarRef, FashionAvatarProps>(fu
             <meshStandardMaterial color="#0f172a" />
           </mesh>
           <group position={[0, -0.32, 0.05]}>
-            <mesh position={[0, 0.02, 0]} castShadow>
+            <mesh position={[0, 0.02, 0]}>
               <boxGeometry args={[0.16, 0.065, 0.28]} />
               <meshStandardMaterial color="#ffffff" roughness={0.2} metalness={0.05} />
             </mesh>
-            <mesh position={[0, 0.08, -0.01]} castShadow>
+            <mesh position={[0, 0.08, -0.01]}>
               <boxGeometry args={[0.15, 0.075, 0.25]} />
               <meshStandardMaterial color={sneakerColor} roughness={0.3} metalness={0.15} />
             </mesh>
@@ -125,7 +126,7 @@ export const FashionAvatar = forwardRef<FashionAvatarRef, FashionAvatarProps>(fu
 
         {/* CHÂN PHẢI */}
         <group ref={rightLegRef} position={[0.13, 0.44, 0]}>
-          <mesh position={[0, 0, 0]} castShadow>
+          <mesh position={[0, 0, 0]} castShadow={shouldCastShadow}>
             <capsuleGeometry args={[0.075, 0.38, 8, 14]} />
             <meshStandardMaterial color={legPantsColor} roughness={0.6} />
           </mesh>
@@ -134,11 +135,11 @@ export const FashionAvatar = forwardRef<FashionAvatarRef, FashionAvatarProps>(fu
             <meshStandardMaterial color="#0f172a" />
           </mesh>
           <group position={[0, -0.32, 0.05]}>
-            <mesh position={[0, 0.02, 0]} castShadow>
+            <mesh position={[0, 0.02, 0]}>
               <boxGeometry args={[0.16, 0.065, 0.28]} />
               <meshStandardMaterial color="#ffffff" roughness={0.2} metalness={0.05} />
             </mesh>
-            <mesh position={[0, 0.08, -0.01]} castShadow>
+            <mesh position={[0, 0.08, -0.01]}>
               <boxGeometry args={[0.15, 0.075, 0.25]} />
               <meshStandardMaterial color={sneakerColor} roughness={0.3} metalness={0.15} />
             </mesh>
@@ -167,13 +168,13 @@ export const FashionAvatar = forwardRef<FashionAvatarRef, FashionAvatarProps>(fu
         </mesh>
 
         {/* Áo sơ mi / thun bên trong */}
-        <mesh position={[0, 0.12, 0]} castShadow>
+        <mesh position={[0, 0.12, 0]}>
           <capsuleGeometry args={[0.185, 0.24, 8, 16]} />
           <meshStandardMaterial color="#ffffff" roughness={0.4} />
         </mesh>
 
         {/* Áo khoác ngoài theo kiểu dáng (Streetwear / Suit / Hoodie / Royal / Cyberpunk) */}
-        <mesh position={[0, 0.13, 0]} castShadow>
+        <mesh position={[0, 0.13, 0]} castShadow={shouldCastShadow}>
           <capsuleGeometry args={[0.205, 0.25, 8, 16]} />
           <meshStandardMaterial
             color={primaryColor}
@@ -349,7 +350,7 @@ export const FashionAvatar = forwardRef<FashionAvatarRef, FashionAvatarProps>(fu
 
       {/* 4. TAY ÁO & ĐỒNG HỒ SMARTWATCH & BÀN TAY THANH THOÁT */}
       {/* TAY TRÁI */}
-      <mesh ref={leftArmRef} position={[-0.26, 0.82, 0]} castShadow>
+      <mesh ref={leftArmRef} position={[-0.26, 0.82, 0]} castShadow={shouldCastShadow}>
         {/* Tay áo khoác */}
         <capsuleGeometry args={[0.065, 0.26, 8, 14]} />
         <meshStandardMaterial color={primaryColor} roughness={0.3} />
@@ -368,28 +369,28 @@ export const FashionAvatar = forwardRef<FashionAvatarRef, FashionAvatarProps>(fu
           <meshStandardMaterial color="#38bdf8" emissive="#0284c7" emissiveIntensity={0.6} />
         </mesh>
         {/* Bàn tay */}
-        <mesh position={[0, -0.22, 0]} castShadow>
+        <mesh position={[0, -0.22, 0]}>
           <sphereGeometry args={[0.05, 10, 10]} />
           <meshStandardMaterial color={skinTone} roughness={0.5} />
         </mesh>
       </mesh>
 
       {/* TAY PHẢI */}
-      <mesh ref={rightArmRef} position={[0.26, 0.82, 0]} castShadow>
+      <mesh ref={rightArmRef} position={[0.26, 0.82, 0]} castShadow={shouldCastShadow}>
         <capsuleGeometry args={[0.065, 0.26, 8, 14]} />
         <meshStandardMaterial color={primaryColor} roughness={0.3} />
         <mesh position={[0, -0.11, 0]}>
           <cylinderGeometry args={[0.07, 0.07, 0.04, 12]} />
           <meshStandardMaterial color={accentColor} />
         </mesh>
-        <mesh position={[0, -0.22, 0]} castShadow>
+        <mesh position={[0, -0.22, 0]}>
           <sphereGeometry args={[0.05, 10, 10]} />
           <meshStandardMaterial color={skinTone} roughness={0.5} />
         </mesh>
       </mesh>
 
       {/* 5. CỔ & TAI NGHE WIRELESS THỜI THƯỢNG (HEADPHONES AROUND NECK) */}
-      <mesh position={[0, 1.05, 0]} castShadow>
+      <mesh position={[0, 1.05, 0]}>
         <cylinderGeometry args={[0.08, 0.09, 0.12, 14]} />
         <meshStandardMaterial color={skinTone} roughness={0.4} />
       </mesh>
@@ -416,7 +417,7 @@ export const FashionAvatar = forwardRef<FashionAvatarRef, FashionAvatarProps>(fu
       {/* 6. ĐẦU & KHUÔN MẶT ANIME FASHION & TÓC LAYER BỒNG BỀNH */}
       <group position={[0, 1.25, 0]}>
         {/* Khuôn mặt thanh thoát có cằm nhỏ xinh */}
-        <mesh castShadow>
+        <mesh castShadow={shouldCastShadow}>
           <sphereGeometry args={[0.24, 20, 20]} />
           <meshStandardMaterial color={skinTone} roughness={0.45} />
         </mesh>
@@ -503,7 +504,7 @@ export const FashionAvatar = forwardRef<FashionAvatarRef, FashionAvatarProps>(fu
         {/* MÁI TÓC LAYER 3D BỒNG BỀNH (STYLISH LAYERED HAIRSTYLE) */}
         <group position={[0, 0.02, 0]}>
           {/* Khối tóc chính ôm đầu */}
-          <mesh position={[0, 0.06, -0.03]} castShadow>
+          <mesh position={[0, 0.06, -0.03]} castShadow={shouldCastShadow}>
             <sphereGeometry args={[0.26, 18, 18]} />
             <meshStandardMaterial color={hairColor} roughness={0.7} />
           </mesh>
@@ -548,7 +549,7 @@ export const FashionAvatar = forwardRef<FashionAvatarRef, FashionAvatarProps>(fu
         {/* MŨ / NÓN / VƯƠNG MIỆN / TAI MÈO / VÒNG HÀO QUANG (MIX & MATCH HEADWEAR) */}
         {hatStyle === 'snapback' && (
           <group position={[0, 0.18, -0.01]} rotation={[-Math.PI / 16, 0, 0]}>
-            <mesh castShadow>
+            <mesh castShadow={shouldCastShadow}>
               <cylinderGeometry args={[0.22, 0.26, 0.11, 20]} />
               <meshStandardMaterial color={accentColor} roughness={0.4} />
             </mesh>
@@ -569,7 +570,7 @@ export const FashionAvatar = forwardRef<FashionAvatarRef, FashionAvatarProps>(fu
 
         {hatStyle === 'beret' && (
           <group position={[0.03, 0.21, -0.02]} rotation={[0.1, 0, -0.18]}>
-            <mesh castShadow>
+            <mesh castShadow={shouldCastShadow}>
               <cylinderGeometry args={[0.25, 0.22, 0.09, 20]} />
               <meshStandardMaterial color={accentColor} roughness={0.6} />
             </mesh>
@@ -582,7 +583,7 @@ export const FashionAvatar = forwardRef<FashionAvatarRef, FashionAvatarProps>(fu
 
         {hatStyle === 'crown' && (
           <group position={[0, 0.24, 0]}>
-            <mesh castShadow>
+            <mesh castShadow={shouldCastShadow}>
               <cylinderGeometry args={[0.17, 0.15, 0.11, 16]} />
               <meshStandardMaterial color="#facc15" metalness={0.9} roughness={0.15} />
             </mesh>
@@ -609,7 +610,7 @@ export const FashionAvatar = forwardRef<FashionAvatarRef, FashionAvatarProps>(fu
           <group position={[0, 0.22, 0.02]}>
             {[-0.14, 0.14].map((x, idx) => (
               <group key={idx} position={[x, 0.04, 0]} rotation={[0, 0, idx === 0 ? 0.32 : -0.32]}>
-                <mesh castShadow>
+                <mesh castShadow={shouldCastShadow}>
                   <coneGeometry args={[0.08, 0.16, 4]} />
                   <meshStandardMaterial color={accentColor} roughness={0.35} />
                 </mesh>

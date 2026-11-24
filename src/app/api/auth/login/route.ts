@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import User from '@/models/User';
+import User, { generateRoomId } from '@/models/User';
+import RoomState from '@/models/RoomState';
 import { ensureDefaultStarterHouse } from '@/models/PlayerHouse';
 import { comparePassword, signJwtToken } from '@/lib/auth';
 
@@ -33,6 +34,22 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
+
+    // Mỗi lần đăng nhập thành công, tự động random lại mã phòng (roomId) mới
+    let newRoomId = generateRoomId();
+    while (await User.exists({ roomId: newRoomId, _id: { $ne: user._id } })) {
+      newRoomId = generateRoomId();
+    }
+    user.roomId = newRoomId;
+    await user.save();
+
+    // Đồng bộ RoomState cũ của Host sang mã phòng mới nếu có
+    try {
+      await RoomState.updateMany(
+        { hostId: user._id.toString() },
+        { $set: { roomCode: newRoomId } }
+      );
+    } catch {}
 
     // Khi mới tạo tài khoản/chưa có nhà thì hệ thống tự random 1 lô đất, lần sau đăng nhập giữ nguyên lô đất đó
     const nhaNguoiChoi = await ensureDefaultStarterHouse(user._id, user.tenDangNhap, false);

@@ -56,6 +56,7 @@ import RemotePlayer from './RemotePlayer';
 import ChatHUD from './ChatHUD';
 import CityTraffic from './CityTraffic';
 import WalkingNPCs from './WalkingNPC';
+import CityLivelyDetails from './CityLivelyDetails';
 import { HtmlOverlayHost } from './SafeHtml';
 import InteriorSpaceScene, { type ActiveInteriorSpace } from './InteriorSpaceScene';
 import { ClassroomLiveHud, useClassroomQuiz } from './ClassroomQuizSystem';
@@ -176,24 +177,31 @@ const ROOF_COLOR_PRESETS = [
 ];
 
 /**
- * Cụm chiếu sáng tự nhiên chân thực toàn thành phố 160x160
+ * Cụm chiếu sáng tự nhiên chân thực toàn thành phố 160x160 (Tối ưu hóa GPU & Shadow Map)
  */
 function DynamicSunLight() {
   const lightRef = useRef<THREE.DirectionalLight>(null);
   const ambientRef = useRef<THREE.AmbientLight>(null);
+  const timeAccumulatorRef = useRef(0);
 
   useFrame((_, delta) => {
     const cycle = useDayNightCycle.getState();
     cycle.advanceTime(delta);
 
-    if (lightRef.current) {
-      lightRef.current.position.set(cycle.sunPosition[0], cycle.sunPosition[1], cycle.sunPosition[2]);
-      lightRef.current.color.copy(cycle.sunColor);
-      lightRef.current.intensity = cycle.sunIntensity;
-    }
+    timeAccumulatorRef.current += delta;
+    // Cập nhật vị trí mặt trời & bóng đổ định kỳ mỗi ~150ms thay vì mỗi frame 16ms
+    if (timeAccumulatorRef.current >= 0.15) {
+      timeAccumulatorRef.current = 0;
 
-    if (ambientRef.current) {
-      ambientRef.current.intensity = cycle.ambientIntensity;
+      if (lightRef.current) {
+        lightRef.current.position.set(cycle.sunPosition[0], cycle.sunPosition[1], cycle.sunPosition[2]);
+        lightRef.current.color.copy(cycle.sunColor);
+        lightRef.current.intensity = cycle.sunIntensity;
+      }
+
+      if (ambientRef.current) {
+        ambientRef.current.intensity = cycle.ambientIntensity;
+      }
     }
   });
 
@@ -206,14 +214,14 @@ function DynamicSunLight() {
         position={[38, 58, 32]}
         intensity={1.3}
         castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-near={-120}
-        shadow-camera-far={300}
-        shadow-camera-left={-85}
-        shadow-camera-right={85}
-        shadow-camera-top={85}
-        shadow-camera-bottom={-85}
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-camera-near={-100}
+        shadow-camera-far={240}
+        shadow-camera-left={-72}
+        shadow-camera-right={72}
+        shadow-camera-top={72}
+        shadow-camera-bottom={-72}
         shadow-bias={-0.0005}
       />
     </>
@@ -346,6 +354,22 @@ function PlayTogetherCityScene({
 
   const remotePlayerList = useMemo(() => Array.from(remotePlayers.values()), [remotePlayers]);
 
+  // Ref ổn định cho callbacks để StaticCityEnvironment không bao giờ bị re-render khi di chuyển / zoom / multiplayer sync
+  const callbacksRef = useRef({
+    onOpenShopModal,
+    onNearFishingPier,
+    onSelectAmusementRide,
+    onOpenAmusementParkMenu,
+    onInteractNPC,
+  });
+  callbacksRef.current = {
+    onOpenShopModal,
+    onNearFishingPier,
+    onSelectAmusementRide,
+    onOpenAmusementParkMenu,
+    onInteractNPC,
+  };
+
   // Danh sách các lô đất đang có người chơi khác (Online) sở hữu
   const remoteHouseByPlot = useMemo(() => {
     const map = new Map<string, RemotePlayerData>();
@@ -362,14 +386,7 @@ function PlayTogetherCityScene({
       <DynamicSunLight />
       <color attach="background" args={[skyBgColor || '#60a5fa']} />
 
-      {/* 1. MẶT ĐẤT THẢM CỎ TỰ NHIÊN & HỆ THỐNG ĐẠI LỘ NHỰA ASPHALT (160x160) */}
-      <PlayTogetherGround />
-
-      {/* 2. HỆ THỐNG XE CỘ LƯU THÔNG TỰ ĐỘNG TRÊN ĐẠI LỘ */}
-      <CityTraffic />
-
-      {/* 3. HỆ THỐNG CƯ DÂN NPC ĐI DẠO & TRÒ CHUYỆN TIẾNG ANH KHẮP THÀNH PHỐ */}
-      <WalkingNPCs onInteractNPC={onInteractNPC} />
+      <StaticCityEnvironment callbacksRef={callbacksRef} />
 
       {/* ================================================================= */}
       {/* 4. HỆ THỐNG PHÂN LÔ NHÀ CẤP 4 NGẪU NHIÊN CỦA BẠN & NGƯỜI CHƠI KHÁC */}
@@ -428,6 +445,76 @@ function PlayTogetherCityScene({
       })}
 
       {/* ================================================================= */}
+      {/* NHÂN VẬT NGƯỜI CHƠI CHÍNH & ĐỒNG BỘ MULTIPLAYER REALTIME           */}
+      {/* ================================================================= */}
+      <PlayerPhysics
+        initialPosition={
+          teleportTarget
+            ? [teleportTarget.x, 0.65, teleportTarget.z]
+            : myPlot.spawnPosition
+        }
+        housePosition={myPlot.position}
+        isFishing={isFishing}
+        isSkateboarding={isSkateboarding}
+        activeVehicle={activeVehicle}
+        vehicleColor={vehicleColor}
+        outfitColor={outfitColor}
+        hatColor={hatColor}
+        pantsColor={pantsColor}
+        shoeColor={shoeColor}
+        hairColor={hairColor}
+        avatarStyle={avatarStyle}
+        hatStyle={hatStyle}
+        accessory={accessory}
+        currentEmote={currentEmote}
+        teleportTarget={teleportTarget}
+        cameraOrbitAngle={cameraOrbitAngle}
+        onNearFishingPier={onNearFishingPier}
+        onNearPlayerHouse={onNearPlayerHouse}
+        onEnterPlotInterior={onEnterPlotInterior}
+        onNearShopVenue={onNearShopVenue}
+        onStepHouseDoor={onStepHouseDoor}
+        onStepShopDoor={onStepShopDoor}
+        onStepSchoolDoor={onStepSchoolDoor}
+        onNearSchoolBuilding={onNearSchoolBuilding}
+        onStepCinemaDoor={onStepCinemaDoor}
+        onNearCinemaBuilding={onNearCinemaBuilding}
+        activeAmusementRide={activeAmusementRide}
+        onNearAmusementPark={onNearAmusementPark}
+      />
+
+      {remotePlayerList.map((player) => (
+        <RemotePlayer key={player.id} player={player} />
+      ))}
+    </>
+  );
+}
+
+interface StaticCityCallbacks {
+  onOpenShopModal: (shopId: ShopVenueId) => void;
+  onNearFishingPier: (near: boolean) => void;
+  onSelectAmusementRide?: (rideId: AmusementRideId) => void;
+  onOpenAmusementParkMenu?: () => void;
+  onInteractNPC?: (npcId: string) => void;
+}
+
+const StaticCityEnvironment = React.memo(function StaticCityEnvironment({
+  callbacksRef,
+}: {
+  callbacksRef: React.MutableRefObject<StaticCityCallbacks>;
+}) {
+  return (
+    <>
+      {/* 1. MẶT ĐẤT THẢM CỎ TỰ NHIÊN & HỆ THỐNG ĐẠI LỘ NHỰA ASPHALT (160x160) */}
+      <PlayTogetherGround />
+
+      {/* 2. HỆ THỐNG XE CỘ LƯU THÔNG TỰ ĐỘNG TRÊN ĐẠI LỘ */}
+      <CityTraffic />
+
+      {/* 3. HỆ THỐNG CƯ DÂN NPC ĐI DẠO & TRÒ CHUYỆN TIẾNG ANH KHẮP THÀNH PHỐ */}
+      <WalkingNPCs onInteractNPC={(id) => callbacksRef.current.onInteractNPC?.(id)} />
+
+      {/* ================================================================= */}
       {/* KHU VỰC 1: QUẢNG TRƯỜNG TRUNG TÂM & ĐÀI PHUN NƯỚC (CENTRAL PLAZA)  */}
       {/* ================================================================= */}
       <CentralFountain position={[0, 0, 0]} />
@@ -441,19 +528,25 @@ function PlayTogetherCityScene({
       {/* ================================================================= */}
       {/* KHU VỰC 3: KHU ẨM THỰC & CAFE (ĐÔNG BẮC: X > 0, Z > 0)           */}
       {/* ================================================================= */}
-      <PlazaCafe position={[34, 0, 35]} onOpenShop={() => onOpenShopModal('CAFE')} />
-      <PizzaBurgerDiner position={[35, 0, 13]} onOpenShop={() => onOpenShopModal('DINER')} />
+      <PlazaCafe
+        position={[34, 0, 35]}
+        onOpenShop={() => callbacksRef.current.onOpenShopModal('CAFE')}
+      />
+      <PizzaBurgerDiner
+        position={[35, 0, 13]}
+        onOpenShop={() => callbacksRef.current.onOpenShopModal('DINER')}
+      />
 
       {/* ================================================================= */}
       {/* KHU VỰC 4: KHU MUA SẮM, QUẦN ÁO, SHOWROOM XE & GIẢI TRÍ           */}
       {/* ================================================================= */}
       <FashionBoutiqueBuilding
         position={[12, 0, -34]}
-        onOpenShop={() => onOpenShopModal('CLOTHING')}
+        onOpenShop={() => callbacksRef.current.onOpenShopModal('CLOTHING')}
       />
       <AutoShowroomBuilding
         position={[-12, 0, -34]}
-        onOpenShop={() => onOpenShopModal('CAR_SHOWROOM')}
+        onOpenShop={() => callbacksRef.current.onOpenShopModal('CAR_SHOWROOM')}
       />
       <SuperMartBuilding position={[35, 0, -35]} />
       <CinemaTheaterBuilding position={[35, 0, -13]} />
@@ -461,16 +554,19 @@ function PlayTogetherCityScene({
       {/* ================================================================= */}
       {/* KHU VỰC 5: KHU VUI CHƠI GIẢI TRÍ, HỒ CÂU CÁ & CẮM TRẠI (BÊN TRÁI)  */}
       {/* ================================================================= */}
-      <FishingLakeAndPier position={[-36, 0, -29]} onNearFishingPier={onNearFishingPier} />
+      <FishingLakeAndPier
+        position={[-36, 0, -29]}
+        onNearFishingPier={(near) => callbacksRef.current.onNearFishingPier(near)}
+      />
       <DetailedSmilePlaygroundPark
         position={[-35, 0, -9]}
-        onSelectRide={onSelectAmusementRide}
-        onOpenParkMenu={onOpenAmusementParkMenu}
+        onSelectRide={(id) => callbacksRef.current.onSelectAmusementRide?.(id)}
+        onOpenParkMenu={() => callbacksRef.current.onOpenAmusementParkMenu?.()}
       />
       <DetailedWonderlandAmusementPark
         position={[-64, 0, -14]}
-        onSelectRide={onSelectAmusementRide}
-        onOpenParkMenu={onOpenAmusementParkMenu}
+        onSelectRide={(id) => callbacksRef.current.onSelectAmusementRide?.(id)}
+        onOpenParkMenu={() => callbacksRef.current.onOpenAmusementParkMenu?.()}
       />
       <CampingZone position={[-42, 0, -43]} />
 
@@ -528,12 +624,21 @@ function PlayTogetherCityScene({
       <StreetLamp position={[48, 0, 48]} rotationY={0} />
 
       {/* ================================================================= */}
-      {/* CÂY XANH & BỤI HOA TRANG TRÍ KHẮP CÁC ĐẠI LỘ                     */}
+      {/* CÂY XANH & BỤI HOA TRANG TRÍ KHẮP CÁC ĐẠI LỘ & CHI TIẾT SỐNG ĐỘNG */}
       {/* ================================================================= */}
+      <CityLivelyDetails />
       <CartoonTree position={[-11, 0, -4]} scale={1.1} />
       <CartoonTree position={[11, 0, -4]} scale={1.1} />
       <CartoonTree position={[-11, 0, 4]} scale={1.1} />
       <CartoonTree position={[11, 0, 4]} scale={1.1} />
+      <CartoonTree position={[-25, 0, 8]} scale={1.15} />
+      <CartoonTree position={[25, 0, 8]} scale={1.15} />
+      <CartoonTree position={[-25, 0, -8]} scale={1.15} />
+      <CartoonTree position={[25, 0, -8]} scale={1.15} />
+      <CartoonTree position={[-8, 0, 25]} scale={1.15} />
+      <CartoonTree position={[8, 0, 25]} scale={1.15} />
+      <CartoonTree position={[-8, 0, -25]} scale={1.15} />
+      <CartoonTree position={[8, 0, -25]} scale={1.15} />
       <CartoonTree position={[-44, 0, 25]} scale={1.3} />
       <CartoonTree position={[-44, 0, 44]} scale={1.4} />
       <CartoonTree position={[44, 0, 25]} scale={1.3} />
@@ -555,49 +660,11 @@ function PlayTogetherCityScene({
       <FlowerBush position={[28, 0, 28]} color="#f43f5e" />
       <FlowerBush position={[-28, 0, 28]} color="#38bdf8" />
       <FlowerBush position={[28, 0, -28]} color="#a855f7" />
-
-      {/* ================================================================= */}
-      {/* NHÂN VẬT NGƯỜI CHƠI CHÍNH & ĐỒNG BỘ MULTIPLAYER REALTIME           */}
-      {/* ================================================================= */}
-      <PlayerPhysics
-        initialPosition={
-          teleportTarget
-            ? [teleportTarget.x, 0.65, teleportTarget.z]
-            : myPlot.spawnPosition
-        }
-        housePosition={myPlot.position}
-        isFishing={isFishing}
-        isSkateboarding={isSkateboarding}
-        activeVehicle={activeVehicle}
-        vehicleColor={vehicleColor}
-        outfitColor={outfitColor}
-        hatColor={hatColor}
-        pantsColor={pantsColor}
-        shoeColor={shoeColor}
-        hairColor={hairColor}
-        avatarStyle={avatarStyle}
-        hatStyle={hatStyle}
-        accessory={accessory}
-        currentEmote={currentEmote}
-        teleportTarget={teleportTarget}
-        cameraOrbitAngle={cameraOrbitAngle}
-        onNearFishingPier={onNearFishingPier}
-        onNearPlayerHouse={onNearPlayerHouse}
-        onEnterPlotInterior={onEnterPlotInterior}
-        onNearShopVenue={onNearShopVenue}
-        onStepHouseDoor={onStepHouseDoor}
-        onStepShopDoor={onStepShopDoor}
-        onStepSchoolDoor={onStepSchoolDoor}
-        onNearSchoolBuilding={onNearSchoolBuilding}
-        onStepCinemaDoor={onStepCinemaDoor}
-        onNearCinemaBuilding={onNearCinemaBuilding}
-        activeAmusementRide={activeAmusementRide}
-        onNearAmusementPark={onNearAmusementPark}
-      />
-
-      {remotePlayerList.map((player) => (
-        <RemotePlayer key={player.id} player={player} />
-      ))}
+      <FlowerBush position={[-28, 0, -28]} color="#fb923c" />
+      <FlowerBush position={[15, 0, 26]} color="#f43f5e" />
+      <FlowerBush position={[-15, 0, 26]} color="#ec4899" />
+      <FlowerBush position={[15, 0, -26]} color="#fbbf24" />
+      <FlowerBush position={[-15, 0, -26]} color="#38bdf8" />
 
       {/* ================================================================= */}
       {/* CÁC NPC NHIỆM VỤ CHÍNH TẠI TỪNG KHU VỰC                          */}
@@ -609,7 +676,7 @@ function PlayTogetherCityScene({
         position={[29, 0.2, 30]}
         rotationY={-Math.PI / 4}
         badgeColor="#f59e0b"
-        onInteract={() => onInteractNPC?.('NPC_EMMA_LONDON_CAFE')}
+        onInteract={() => callbacksRef.current.onInteractNPC?.('NPC_EMMA_LONDON_CAFE')}
       />
 
       <NPC
@@ -619,7 +686,7 @@ function PlayTogetherCityScene({
         position={[29, 0.2, 13]}
         rotationY={-Math.PI / 3}
         badgeColor="#ea580c"
-        onInteract={() => onInteractNPC?.('NPC_LUIGI_DINER')}
+        onInteract={() => callbacksRef.current.onInteractNPC?.('NPC_LUIGI_DINER')}
       />
 
       <NPC
@@ -629,7 +696,7 @@ function PlayTogetherCityScene({
         position={[-29, 0.2, 30]}
         rotationY={Math.PI / 4}
         badgeColor="#34d399"
-        onInteract={() => onInteractNPC?.('NPC_ALEX_ACADEMY')}
+        onInteract={() => callbacksRef.current.onInteractNPC?.('NPC_ALEX_ACADEMY')}
       />
 
       <NPC
@@ -639,7 +706,7 @@ function PlayTogetherCityScene({
         position={[-29, 0.2, 13]}
         rotationY={Math.PI / 3}
         badgeColor="#38bdf8"
-        onInteract={() => onInteractNPC?.('NPC_SARAH_LIBRARY')}
+        onInteract={() => callbacksRef.current.onInteractNPC?.('NPC_SARAH_LIBRARY')}
       />
 
       <NPC
@@ -649,7 +716,7 @@ function PlayTogetherCityScene({
         position={[-30, 0.2, -19]}
         rotationY={Math.PI / 4}
         badgeColor="#0284c7"
-        onInteract={() => onInteractNPC?.('NPC_FISHERMAN_JACK')}
+        onInteract={() => callbacksRef.current.onInteractNPC?.('NPC_FISHERMAN_JACK')}
       />
 
       <NPC
@@ -659,7 +726,7 @@ function PlayTogetherCityScene({
         position={[0, 0.2, -56]}
         rotationY={0}
         badgeColor="#60a5fa"
-        onInteract={() => onInteractNPC?.('NPC_OFFICER_TOM')}
+        onInteract={() => callbacksRef.current.onInteractNPC?.('NPC_OFFICER_TOM')}
       />
 
       <NPC
@@ -669,7 +736,7 @@ function PlayTogetherCityScene({
         position={[29, 0.2, -9]}
         rotationY={-Math.PI / 4}
         badgeColor="#c084fc"
-        onInteract={() => onInteractNPC?.('NPC_CHARLIE_CINEMA')}
+        onInteract={() => callbacksRef.current.onInteractNPC?.('NPC_CHARLIE_CINEMA')}
       />
 
       <NPC
@@ -679,11 +746,11 @@ function PlayTogetherCityScene({
         position={[-28, 0.2, -6]}
         rotationY={Math.PI / 4}
         badgeColor="#f472b6"
-        onInteract={() => onInteractNPC?.('NPC_LILY_GARDEN')}
+        onInteract={() => callbacksRef.current.onInteractNPC?.('NPC_LILY_GARDEN')}
       />
     </>
   );
-}
+});
 
 interface IsometricWorldProps {
   onOpenDialogue?: (npcId: string) => void;
@@ -2578,7 +2645,18 @@ export default function IsometricWorld({ onOpenDialogue }: IsometricWorldProps) 
       {/* 6. 3D WEBGL CANVAS: REALISTIC METROPOLIS & INTERIOR 3D SPACES     */}
       {/* ================================================================= */}
       <KeyboardControls map={keyboardMap}>
-        <Canvas shadows gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}>
+        <Canvas
+          shadows="percentage"
+          dpr={[1, 1.25]}
+          performance={{ min: 0.5 }}
+          gl={{
+            antialias: true,
+            alpha: false,
+            powerPreference: 'high-performance',
+            stencil: false,
+            depth: true,
+          }}
+        >
           <OrthographicCamera
             makeDefault
             position={[22, 22, 22]}

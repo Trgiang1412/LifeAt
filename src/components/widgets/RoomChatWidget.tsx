@@ -46,14 +46,28 @@ const AVATAR_POOL = [
   'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100&auto=format&fit=crop&q=60',
 ];
 
-// Cấu hình Google STUN servers chuẩn cho WebRTC Audio & Video P2P
+// Cấu hình Google STUN & Metered TURN servers chuẩn cho WebRTC Audio & Video P2P xuyên NAT/Firewall
 const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
   ],
   iceCandidatePoolSize: 10,
 };
@@ -777,7 +791,7 @@ export default function RoomChatWidget({
 
     const freshStream = new MediaStream(remoteStream.getTracks());
     const hasAudio = freshStream.getAudioTracks().some((t) => t.enabled);
-    const hasVideo = freshStream.getVideoTracks().some((t) => t.enabled && t.readyState === 'live');
+    const hasVideo = freshStream.getVideoTracks().some((t) => t.enabled);
 
     setRemotePeers((prev) => ({
       ...prev,
@@ -790,6 +804,11 @@ export default function RoomChatWidget({
         camOn: hasVideo,
       },
     }));
+
+    // Tự động mở khung Video Co-Working nếu đối phương mở camera
+    if (hasVideo) {
+      setShowFloatingCam(true);
+    }
   }, []);
 
   // Tạo hoặc lấy kết nối WebRTC PeerConnection tới một bạn học trong phòng
@@ -808,12 +827,16 @@ export default function RoomChatWidget({
         remoteStreamsRef.current.set(targetSocketId, remoteStream);
       }
 
-      // Xóa track cũ cùng loại nếu có rồi thêm track mới
-      const existing = remoteStream.getTracks().find((t) => t.kind === event.track.kind);
+      // Xóa track cũ cùng kind nếu có rồi thêm track mới
+      const existing = remoteStream.getTracks().find((t) => t.id === event.track.id || t.kind === event.track.kind);
       if (existing) {
         remoteStream.removeTrack(existing);
       }
       remoteStream.addTrack(event.track);
+
+      event.track.onunmute = () => {
+        updateRemotePeerState(targetSocketId, peerInfo);
+      };
 
       event.track.onended = () => {
         updateRemotePeerState(targetSocketId, peerInfo);
@@ -1263,6 +1286,7 @@ export default function RoomChatWidget({
           userId: user?.id || 'me',
           userName: user?.tenDangNhap || hostName || 'Bạn',
           isHost,
+          isWebRtcClient: true,
         });
       };
 
@@ -1313,7 +1337,7 @@ export default function RoomChatWidget({
         }
       });
 
-      // 4. Xử lý gói tin WebRTC truyền Audio & Video thật giữa các thành viên
+      // 4. Xử lý gói tin WebRTC truyền Audio & Video thật giữa các thành viên (Perfect Negotiation W3C Standard)
       socket.on('webrtc_signal', async (data: any) => {
         if (!data || !data.fromSocketId || data.fromSocketId === socket?.id) return;
         const fromId = data.fromSocketId;
@@ -1325,15 +1349,30 @@ export default function RoomChatWidget({
               userName: data.userName,
             });
 
+            // Perfect Negotiation: Xử lý va chạm Offer (Glare) giữa 2 bên
+            const isPolite = (socket?.id || '').localeCompare(fromId) > 0;
+            const offerCollision = pc.signalingState !== 'stable';
+
+            if (offerCollision) {
+              if (!isPolite) {
+                // Impolite peer: Bỏ qua offer đến và giữ offer của mình
+                return;
+              }
+              // Polite peer: Rollback offer cục bộ để nhận offer của đối phương
+              await pc.setLocalDescription({ type: 'rollback' });
+            }
+
             // Nếu máy mình đang có local stream, thêm tracks vào pc để đối phương cũng nhận được
             if (localStreamRef.current) {
               const senders = pc.getSenders();
               localStreamRef.current.getTracks().forEach((track) => {
                 const sender = senders.find((s: any) => s.track && s.track.kind === track.kind);
                 if (sender) {
-                  sender.replaceTrack(track);
+                  sender.replaceTrack(track).catch(() => {});
                 } else {
-                  pc.addTrack(track, localStreamRef.current!);
+                  try {
+                    pc.addTrack(track, localStreamRef.current!);
+                  } catch {}
                 }
               });
             }
@@ -1351,10 +1390,7 @@ export default function RoomChatWidget({
             }
 
             // Tạo Answer phản hồi với yêu cầu nhận cả Audio và Video
-            const answer = await pc.createAnswer({
-              offerToReceiveAudio: true,
-              offerToReceiveVideo: true,
-            });
+            const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
 
             socket?.emit('webrtc_signal', {
@@ -1370,10 +1406,8 @@ export default function RoomChatWidget({
             });
           } else if (data.type === 'answer' && data.sdp) {
             const pc = peerConnectionsRef.current.get(fromId);
-            if (pc) {
-              if (pc.signalingState !== 'stable') {
-                await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-              }
+            if (pc && pc.signalingState === 'have-local-offer') {
+              await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
 
               // Xử lý các ICE Candidate đến sớm
               const pending = pendingCandidatesRef.current.get(fromId) || [];
@@ -2095,7 +2129,7 @@ export default function RoomChatWidget({
       ))}
 
       {/* KHUNG VIDEO CO-WORKING NỔI Ở CHÍNH GIỮA MÀN HÌNH (Portaled ra document.body) */}
-      {(myCam || Object.values(remotePeers).some((rp) => rp.stream && rp.stream.getVideoTracks().some((t) => t.enabled))) && showFloatingCam && (
+      {((myCam && showFloatingCam) || Object.values(remotePeers).some((rp) => rp.stream && rp.stream.getVideoTracks().some((t) => t.enabled))) && (
         <CoWorkingCenterVideoHub
           myCam={myCam}
           myMic={myMic}

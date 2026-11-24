@@ -15,6 +15,7 @@ import {
   setNearbyStreetNpcId,
 } from '@/stores/useMultiplayerStore';
 import { FashionAvatar } from './FashionAvatar';
+import KeyPromptBadge from './KeyPromptBadge';
 
 // ============================================================================
 // KHỞI TẠO BIẾN DÙNG CHUNG BÊN NGOÀI ĐỂ TRIỆT TIÊU GC SPIKE Ở 60-120 FPS
@@ -150,64 +151,18 @@ export default function NPC({
       </group>
 
       {/* 
-        4. 3D Tooltip Html gọn nhẹ: Chỉ hiện nút [E] khi đứng gần
+        4. 3D Tooltip Html tối giản: Chỉ hiện đúng phím [E] khi người chơi đến gần, không hiện chữ rối mắt
       */}
-      <Html
-        position={[_vTooltipPos.x, _vTooltipPos.y, _vTooltipPos.z]}
-        center
-        zIndexRange={[10, 0]}
-        style={{ pointerEvents: 'none' }}
-      >
-        {isInRange ? (
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 11px',
-              borderRadius: '999px',
-              backgroundColor: 'rgba(15, 23, 42, 0.92)',
-              border: '1.5px solid #38bdf8',
-              boxShadow: '0 6px 18px rgba(0, 0, 0, 0.45)',
-              color: '#ffffff',
-              fontFamily: 'system-ui, sans-serif',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <span
-              style={{
-                padding: '1px 6px',
-                borderRadius: '5px',
-                backgroundColor: '#38bdf8',
-                color: '#0f172a',
-                fontWeight: 900,
-                fontSize: '11px',
-              }}
-            >
-              E
-            </span>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#f8fafc' }}>
-              {name}
-            </span>
-          </div>
-        ) : (
-          <div
-            style={{
-              padding: '2px 8px',
-              borderRadius: '999px',
-              backgroundColor: 'rgba(15, 23, 42, 0.72)',
-              border: `1px solid ${badgeColor}`,
-              color: '#f8fafc',
-              fontSize: '10px',
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
-              fontFamily: 'system-ui, sans-serif',
-            }}
-          >
-            {name}
-          </div>
-        )}
-      </Html>
+      {isInRange && (
+        <Html
+          position={[_vTooltipPos.x, _vTooltipPos.y, _vTooltipPos.z]}
+          center
+          zIndexRange={[10, 0]}
+          style={{ pointerEvents: 'auto' }}
+        >
+          <KeyPromptBadge keyLabel="E" color="#38bdf8" />
+        </Html>
+      )}
     </RigidBody>
   );
 }

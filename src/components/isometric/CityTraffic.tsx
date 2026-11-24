@@ -209,7 +209,7 @@ function AutonomousVehicle({ route }: { route: VehicleRoute }) {
           </mesh>
 
           {/* Cabin mui xe phía trên */}
-          <mesh position={[0, 0.85, -0.15]} castShadow>
+          <mesh position={[0, 0.85, -0.15]}>
             <boxGeometry args={[1.38, 0.55, 1.7]} />
             <meshStandardMaterial
               color={route.type === 'police' ? '#ffffff' : route.color}
@@ -304,7 +304,6 @@ function AutonomousVehicle({ route }: { route: VehicleRoute }) {
         ref={wheelFLRef}
         position={[-0.82, 0.32, isBus ? 1.5 : 0.95]}
         rotation={[0, 0, Math.PI / 2]}
-        castShadow
       >
         <cylinderGeometry args={[0.32, 0.32, 0.24, 14]} />
         <meshStandardMaterial color="#1e293b" roughness={0.8} />
@@ -313,7 +312,6 @@ function AutonomousVehicle({ route }: { route: VehicleRoute }) {
         ref={wheelFRRef}
         position={[0.82, 0.32, isBus ? 1.5 : 0.95]}
         rotation={[0, 0, Math.PI / 2]}
-        castShadow
       >
         <cylinderGeometry args={[0.32, 0.32, 0.24, 14]} />
         <meshStandardMaterial color="#1e293b" roughness={0.8} />
@@ -322,7 +320,6 @@ function AutonomousVehicle({ route }: { route: VehicleRoute }) {
         ref={wheelBLRef}
         position={[-0.82, 0.32, isBus ? -1.5 : -0.95]}
         rotation={[0, 0, Math.PI / 2]}
-        castShadow
       >
         <cylinderGeometry args={[0.32, 0.32, 0.24, 14]} />
         <meshStandardMaterial color="#1e293b" roughness={0.8} />
@@ -331,7 +328,6 @@ function AutonomousVehicle({ route }: { route: VehicleRoute }) {
         ref={wheelBRRef}
         position={[0.82, 0.32, isBus ? -1.5 : -0.95]}
         rotation={[0, 0, Math.PI / 2]}
-        castShadow
       >
         <cylinderGeometry args={[0.32, 0.32, 0.24, 14]} />
         <meshStandardMaterial color="#1e293b" roughness={0.8} />

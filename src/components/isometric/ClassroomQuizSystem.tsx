@@ -699,23 +699,6 @@ export function Classroom3DScene({
               hairColor="#3b1d11"
               accessory="none"
             />
-            <Html position={[0, 2.35, 0]} center zIndexRange={[14, 0]}>
-              <div
-                style={{
-                  background: 'linear-gradient(135deg, #ec4899, #db2777)',
-                  color: '#ffffff',
-                  padding: '3px 12px',
-                  borderRadius: '999px',
-                  fontSize: '11px',
-                  fontWeight: 900,
-                  border: '1.5px solid #ffffff',
-                  boxShadow: '0 4px 12px rgba(219, 39, 119, 0.55)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                👩‍🏫 Cô Lan
-              </div>
-            </Html>
           </group>
         </group>
 
@@ -1254,22 +1237,6 @@ export function ClassroomLiveHud({
                     ⏳ Sang câu mới: {nextCountdownSec}s
                   </span>
                 )}
-                <button
-                  type="button"
-                  onClick={nextQuestionNow}
-                  style={{
-                    backgroundColor: 'rgba(255,255,255,0.14)',
-                    color: '#ffffff',
-                    border: '1px solid rgba(255,255,255,0.3)',
-                    borderRadius: '999px',
-                    padding: '2px 10px',
-                    fontSize: '11px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                  }}
-                >
-                  ⏭️ Câu tiếp
-                </button>
               </div>
             </div>
           </div>

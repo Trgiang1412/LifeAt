@@ -47,12 +47,12 @@ export function getDefaultHouseForUser(tenDangNhap: string = 'Bạn'): PlayerHou
     mauMai: '#b93829',
     kichThuocLuoiNoiThat: [10, 10],
     danhSachNoiThat: [
-      { maVatPham: 'GIUONG_GO_DON', tenVatPham: 'Giường Gỗ Đơn Ấm Cúng', toaDoLuoiX: 2, toaDoLuoiZ: 2, gocXoayDo: 0 },
-      { maVatPham: 'BAN_HOC_DEN_LED', tenVatPham: 'Bàn Học Tiếng Anh & Laptop', toaDoLuoiX: 7, toaDoLuoiZ: 2, gocXoayDo: 0 },
-      { maVatPham: 'KE_SACH_OXFORD', tenVatPham: 'Kệ Sách Gỗ Sồi', toaDoLuoiX: 8, toaDoLuoiZ: 2, gocXoayDo: 0 },
-      { maVatPham: 'SOFA_GO_PHONG_KHACH', tenVatPham: 'Bộ Trường Kỷ & Bàn Trà', toaDoLuoiX: 3, toaDoLuoiZ: 6, gocXoayDo: 90 },
-      { maVatPham: 'KE_TIVI_CO_DIEN', tenVatPham: 'Kệ Tivi Gỗ & Loa Lo-Fi', toaDoLuoiX: 7, toaDoLuoiZ: 6, gocXoayDo: 270 },
-      { maVatPham: 'THAM_DET_THO_CAM', tenVatPham: 'Thảm Trải Sàn Phòng Khách', toaDoLuoiX: 5, toaDoLuoiZ: 6, gocXoayDo: 0 },
+      { maVatPham: 'GIUONG_GO_DON', tenVatPham: 'Giường Gỗ Đơn Ấm Cúng', toaDoLuoiX: 8, toaDoLuoiZ: 0, gocXoayDo: 180 },
+      { maVatPham: 'BAN_HOC_DEN_LED', tenVatPham: 'Bàn Học Tiếng Anh & Laptop', toaDoLuoiX: 2, toaDoLuoiZ: 0, gocXoayDo: 0 },
+      { maVatPham: 'KE_SACH_OXFORD', tenVatPham: 'Kệ Sách Gỗ Sồi', toaDoLuoiX: 3, toaDoLuoiZ: 0, gocXoayDo: 0 },
+      { maVatPham: 'SOFA_GO_PHONG_KHACH', tenVatPham: 'Bộ Trường Kỷ & Bàn Trà', toaDoLuoiX: 1, toaDoLuoiZ: 6, gocXoayDo: 0 },
+      { maVatPham: 'KE_TIVI_CO_DIEN', tenVatPham: 'Kệ Tivi Gỗ & Loa Lo-Fi', toaDoLuoiX: 3, toaDoLuoiZ: 6, gocXoayDo: 270 },
+      { maVatPham: 'THAM_DET_THO_CAM', tenVatPham: 'Thảm Trải Sàn Phòng Khách', toaDoLuoiX: 2, toaDoLuoiZ: 6, gocXoayDo: 0 },
     ],
   };
 }
