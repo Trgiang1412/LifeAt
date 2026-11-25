@@ -215,7 +215,10 @@ function CoWorkingCenterVideoHub({
   }, []);
 
   const activePeersWithVideo = Object.values(remotePeers).filter(
-    (rp) => rp.stream && rp.stream.getVideoTracks().some((t) => t.enabled && t.readyState === 'live')
+    (rp) =>
+      rp.camOn !== false &&
+      rp.stream &&
+      rp.stream.getVideoTracks().some((t) => t.enabled && t.readyState === 'live')
   );
 
   const totalCams = (myCam ? 1 : 0) + activePeersWithVideo.length;
@@ -408,7 +411,7 @@ function CoWorkingCenterVideoHub({
         top: `${currentY}px`,
         width: `${modalWidth}px`,
         maxWidth: '98vw',
-        borderRadius: 3.5,
+        borderRadius: '10px',
         overflow: 'hidden',
         backgroundColor: 'rgba(15, 23, 42, 0.95)',
         backdropFilter: 'blur(28px)',
@@ -513,7 +516,7 @@ function CoWorkingCenterVideoHub({
           <Box
             sx={{
               position: 'relative',
-              borderRadius: 2.5,
+              borderRadius: '8px',
               overflow: 'hidden',
               backgroundColor: '#0f172a',
               aspectRatio: isCompact ? '16/11' : '16/10',
@@ -549,7 +552,7 @@ function CoWorkingCenterVideoHub({
                 sx={{
                   px: 1,
                   py: 0.35,
-                  borderRadius: 1.5,
+                  borderRadius: '6px',
                   backgroundColor: 'rgba(15, 23, 42, 0.75)',
                   backdropFilter: 'blur(8px)',
                   display: 'flex',
@@ -567,7 +570,7 @@ function CoWorkingCenterVideoHub({
                 sx={{
                   px: 0.8,
                   py: 0.35,
-                  borderRadius: 1.5,
+                  borderRadius: '6px',
                   backgroundColor: myMic ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.35)',
                   color: myMic ? '#34d399' : '#fca5a5',
                   fontSize: isCompact ? '0.65rem' : '0.7rem',
@@ -590,7 +593,7 @@ function CoWorkingCenterVideoHub({
             key={peer.socketId}
             sx={{
               position: 'relative',
-              borderRadius: 2.5,
+              borderRadius: '8px',
               overflow: 'hidden',
               backgroundColor: '#0f172a',
               aspectRatio: isCompact ? '16/11' : '16/10',
@@ -624,7 +627,7 @@ function CoWorkingCenterVideoHub({
                 sx={{
                   px: 1,
                   py: 0.35,
-                  borderRadius: 1.5,
+                  borderRadius: '6px',
                   backgroundColor: 'rgba(15, 23, 42, 0.75)',
                   backdropFilter: 'blur(8px)',
                   display: 'flex',
@@ -642,9 +645,9 @@ function CoWorkingCenterVideoHub({
                 sx={{
                   px: 0.8,
                   py: 0.35,
-                  borderRadius: 1.5,
-                  backgroundColor: 'rgba(6, 182, 212, 0.25)',
-                  color: '#67e8f9',
+                  borderRadius: '6px',
+                  backgroundColor: peer.micOn ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.35)',
+                  color: peer.micOn ? '#34d399' : '#fca5a5',
                   fontSize: isCompact ? '0.65rem' : '0.7rem',
                   fontWeight: 700,
                   display: 'flex',
@@ -652,8 +655,8 @@ function CoWorkingCenterVideoHub({
                   gap: 0.4,
                 }}
               >
-                <VideocamRoundedIcon sx={{ fontSize: 13 }} />
-                Live
+                {peer.micOn ? <MicRoundedIcon sx={{ fontSize: 13 }} /> : <MicOffRoundedIcon sx={{ fontSize: 13 }} />}
+                {peer.micOn ? 'Bật mic' : 'Đã tắt mic'}
               </Box>
             </Box>
           </Box>
@@ -683,14 +686,15 @@ function CoWorkingCenterVideoHub({
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
           <Button
             size="small"
             variant="contained"
             onClick={onToggleMic}
             startIcon={myMic ? <MicRoundedIcon /> : <MicOffRoundedIcon />}
             sx={{
-              borderRadius: 2,
+              borderRadius: '8px',
+              whiteSpace: 'nowrap',
               fontSize: '0.74rem',
               fontWeight: 700,
               textTransform: 'none',
@@ -713,7 +717,8 @@ function CoWorkingCenterVideoHub({
             onClick={onToggleCam}
             startIcon={myCam ? <VideocamRoundedIcon /> : <VideocamOffRoundedIcon />}
             sx={{
-              borderRadius: 2,
+              borderRadius: '8px',
+              whiteSpace: 'nowrap',
               fontSize: '0.74rem',
               fontWeight: 700,
               textTransform: 'none',
@@ -783,6 +788,11 @@ export default function RoomChatWidget({
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  const myMicRef = useRef(false);
+  const myCamRef = useRef(false);
+  const remoteMediaBySocketRef = useRef<Record<string, { micOn: boolean; camOn: boolean }>>({});
+  myMicRef.current = myMic;
+  myCamRef.current = myCam;
 
   // Cập nhật State Remote Peer với MediaStream mới nhất (đảm bảo React re-render nhận track)
   const updateRemotePeerState = useCallback((targetSocketId: string, peerInfo?: { userId?: string; userName?: string }) => {
@@ -790,8 +800,9 @@ export default function RoomChatWidget({
     if (!remoteStream) return;
 
     const freshStream = new MediaStream(remoteStream.getTracks());
-    const hasAudio = freshStream.getAudioTracks().some((t) => t.enabled);
-    const hasVideo = freshStream.getVideoTracks().some((t) => t.enabled);
+    const mediaOverride = remoteMediaBySocketRef.current[targetSocketId];
+    const hasAudio = mediaOverride ? mediaOverride.micOn : freshStream.getAudioTracks().some((t) => t.enabled);
+    const hasVideo = mediaOverride ? mediaOverride.camOn : freshStream.getVideoTracks().some((t) => t.enabled);
 
     setRemotePeers((prev) => ({
       ...prev,
@@ -946,7 +957,12 @@ export default function RoomChatWidget({
           displayName = `${displayName} (You)`;
         }
 
-        const remoteMedia = p.userId ? remoteMediaMap[p.userId] : undefined;
+        const remoteMedia =
+          (p.userId && remoteMediaMap[p.userId]) ||
+          (p.socketId && remoteMediaMap[p.socketId]) ||
+          (p.name && remoteMediaMap[p.name]) ||
+          (p.isHost && remoteMediaMap['host']) ||
+          undefined;
         return {
           id: p.userId || `p-${idx}`,
           name: displayName,
@@ -1057,9 +1073,11 @@ export default function RoomChatWidget({
 
         socketRef.current?.emit('roomMediaToggle', {
           roomCode,
-          userId: user?.id || 'me',
+          userId: user?.id || (isHost ? 'host' : 'me'),
+          userName: user?.tenDangNhap || hostName || 'Bạn',
+          isHost,
           micOn: true,
-          camOn: myCam,
+          camOn: myCamRef.current,
         });
 
         // Phát sóng luồng Mic tới tất cả các bạn học trong phòng
@@ -1083,9 +1101,11 @@ export default function RoomChatWidget({
 
         socketRef.current?.emit('roomMediaToggle', {
           roomCode,
-          userId: user?.id || 'me',
+          userId: user?.id || (isHost ? 'host' : 'me'),
+          userName: user?.tenDangNhap || hostName || 'Bạn',
+          isHost,
           micOn: false,
-          camOn: myCam,
+          camOn: myCamRef.current,
         });
       }
     } catch (err: any) {
@@ -1137,8 +1157,10 @@ export default function RoomChatWidget({
 
         socketRef.current?.emit('roomMediaToggle', {
           roomCode,
-          userId: user?.id || 'me',
-          micOn: myMic,
+          userId: user?.id || (isHost ? 'host' : 'me'),
+          userName: user?.tenDangNhap || hostName || 'Bạn',
+          isHost,
+          micOn: myMicRef.current,
           camOn: true,
         });
 
@@ -1169,8 +1191,10 @@ export default function RoomChatWidget({
 
         socketRef.current?.emit('roomMediaToggle', {
           roomCode,
-          userId: user?.id || 'me',
-          micOn: myMic,
+          userId: user?.id || (isHost ? 'host' : 'me'),
+          userName: user?.tenDangNhap || hostName || 'Bạn',
+          isHost,
+          micOn: myMicRef.current,
           camOn: false,
         });
       }
@@ -1303,9 +1327,19 @@ export default function RoomChatWidget({
               knownPeersRef.current.set(p.socketId, p);
             }
           });
-          // Nếu mình đang bật Mic hoặc Cam, phát sóng ngay cho các bạn học
+          // Nếu mình đang bật Mic hoặc Cam, phát sóng ngay cho các bạn học & đồng bộ trạng thái media
           if (localStreamRef.current) {
             broadcastLocalTracksToAllPeers(localStreamRef.current);
+          }
+          if (myMicRef.current || myCamRef.current) {
+            socket?.emit('roomMediaToggle', {
+              roomCode,
+              userId: user?.id || (isHost ? 'host' : 'me'),
+              userName: user?.tenDangNhap || hostName || 'Bạn',
+              isHost,
+              micOn: myMicRef.current,
+              camOn: myCamRef.current,
+            });
           }
         }
       });
@@ -1316,6 +1350,16 @@ export default function RoomChatWidget({
           knownPeersRef.current.set(data.socketId, data);
           if (localStreamRef.current) {
             broadcastLocalTracksToAllPeers(localStreamRef.current);
+          }
+          if (myMicRef.current || myCamRef.current) {
+            socket?.emit('roomMediaToggle', {
+              roomCode,
+              userId: user?.id || (isHost ? 'host' : 'me'),
+              userName: user?.tenDangNhap || hostName || 'Bạn',
+              isHost,
+              micOn: myMicRef.current,
+              camOn: myCamRef.current,
+            });
           }
         }
       });
@@ -1455,15 +1499,40 @@ export default function RoomChatWidget({
       // Lắng nghe cập nhật trạng thái Mic & Camera của các thành viên khác trong phòng
       const handleMediaChanged = (data: any) => {
         if (!data || data.roomCode !== roomCode) return;
-        if (data.userId && data.userId !== (user?.id || 'me')) {
-          setRemoteMediaMap((prev) => ({
-            ...prev,
-            [data.userId]: {
-              micOn: Boolean(data.micOn),
-              camOn: Boolean(data.camOn),
-            },
-          }));
+        if (data.fromSocketId && data.fromSocketId === socket?.id) return;
+
+        const nextMicOn = Boolean(data.micOn);
+        const nextCamOn = Boolean(data.camOn);
+        const mediaState = { micOn: nextMicOn, camOn: nextCamOn };
+
+        if (data.fromSocketId) {
+          remoteMediaBySocketRef.current[data.fromSocketId] = mediaState;
+          setRemotePeers((prev) => {
+            const existing = prev[data.fromSocketId];
+            if (!existing) return prev;
+            return {
+              ...prev,
+              [data.fromSocketId]: {
+                ...existing,
+                micOn: nextMicOn,
+                camOn: nextCamOn,
+              },
+            };
+          });
         }
+
+        if (nextCamOn) {
+          setShowFloatingCam(true);
+        }
+
+        setRemoteMediaMap((prev) => {
+          const updated = { ...prev };
+          if (data.userId) updated[data.userId] = mediaState;
+          if (data.fromSocketId) updated[data.fromSocketId] = mediaState;
+          if (data.userName) updated[data.userName] = mediaState;
+          if (data.isHost) updated['host'] = mediaState;
+          return updated;
+        });
       };
 
       socket.on('roomMediaChanged', handleMediaChanged);

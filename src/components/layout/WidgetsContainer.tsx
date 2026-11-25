@@ -150,23 +150,22 @@ export default function WidgetsContainer({
         </DraggableWidgetWrapper>
       )}
 
-      {activeWidgets.has('chat') && (
-        <DraggableWidgetWrapper
-          id="chat"
-          defaultPosition={DEFAULT_POSITIONS.chat}
-          zIndex={zIndices.chat || 20}
-          onBringToFront={bringToFront}
-        >
-          <RoomChatWidget
-            onClose={() => onCloseWidget('chat')}
-            hostName={hostName}
-            roomCode={roomCode}
-            isHost={isHost}
-            onLeaveRoom={onLeaveRoom}
-            participantsList={participantsList}
-          />
-        </DraggableWidgetWrapper>
-      )}
+      <DraggableWidgetWrapper
+        id="chat"
+        defaultPosition={DEFAULT_POSITIONS.chat}
+        zIndex={zIndices.chat || 20}
+        onBringToFront={bringToFront}
+        visible={activeWidgets.has('chat')}
+      >
+        <RoomChatWidget
+          onClose={() => onCloseWidget('chat')}
+          hostName={hostName}
+          roomCode={roomCode}
+          isHost={isHost}
+          onLeaveRoom={onLeaveRoom}
+          participantsList={participantsList}
+        />
+      </DraggableWidgetWrapper>
 
       {activeWidgets.has('calendar') && (
         <DraggableWidgetWrapper

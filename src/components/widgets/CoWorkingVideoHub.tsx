@@ -191,7 +191,10 @@ export function CoWorkingCenterVideoHub({
   }, []);
 
   const activePeersWithVideo = Object.values(remotePeers).filter(
-    (rp) => rp.stream && rp.stream.getVideoTracks().some((t) => t.enabled && t.readyState === 'live')
+    (rp) =>
+      rp.camOn !== false &&
+      rp.stream &&
+      rp.stream.getVideoTracks().some((t) => t.enabled && t.readyState === 'live')
   );
 
   const totalCams = (myCam ? 1 : 0) + activePeersWithVideo.length;
@@ -380,7 +383,7 @@ export function CoWorkingCenterVideoHub({
         top: `${currentY}px`,
         width: `${modalWidth}px`,
         maxWidth: '98vw',
-        borderRadius: 3.5,
+        borderRadius: '10px',
         overflow: 'hidden',
         backgroundColor: 'rgba(15, 23, 42, 0.95)',
         backdropFilter: 'blur(28px)',
@@ -485,7 +488,7 @@ export function CoWorkingCenterVideoHub({
           <Box
             sx={{
               position: 'relative',
-              borderRadius: 2.5,
+              borderRadius: '8px',
               overflow: 'hidden',
               backgroundColor: '#0f172a',
               aspectRatio: isCompact ? '16/11' : '16/10',
@@ -521,7 +524,7 @@ export function CoWorkingCenterVideoHub({
                 sx={{
                   px: 1,
                   py: 0.35,
-                  borderRadius: 1.5,
+                  borderRadius: '6px',
                   backgroundColor: 'rgba(15, 23, 42, 0.75)',
                   backdropFilter: 'blur(8px)',
                   display: 'flex',
@@ -539,7 +542,7 @@ export function CoWorkingCenterVideoHub({
                 sx={{
                   px: 0.8,
                   py: 0.35,
-                  borderRadius: 1.5,
+                  borderRadius: '6px',
                   backgroundColor: myMic ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.35)',
                   color: myMic ? '#34d399' : '#fca5a5',
                   fontSize: isCompact ? '0.65rem' : '0.7rem',
@@ -562,7 +565,7 @@ export function CoWorkingCenterVideoHub({
             key={peer.socketId}
             sx={{
               position: 'relative',
-              borderRadius: 2.5,
+              borderRadius: '8px',
               overflow: 'hidden',
               backgroundColor: '#0f172a',
               aspectRatio: isCompact ? '16/11' : '16/10',
@@ -597,7 +600,7 @@ export function CoWorkingCenterVideoHub({
                 sx={{
                   px: 1,
                   py: 0.35,
-                  borderRadius: 1.5,
+                  borderRadius: '6px',
                   backgroundColor: 'rgba(15, 23, 42, 0.75)',
                   backdropFilter: 'blur(8px)',
                   display: 'flex',
@@ -615,7 +618,7 @@ export function CoWorkingCenterVideoHub({
                 sx={{
                   px: 0.8,
                   py: 0.35,
-                  borderRadius: 1.5,
+                  borderRadius: '6px',
                   backgroundColor: peer.micOn ? 'rgba(16, 185, 129, 0.25)' : 'rgba(6, 182, 212, 0.25)',
                   color: peer.micOn ? '#34d399' : '#67e8f9',
                   fontSize: isCompact ? '0.65rem' : '0.7rem',
@@ -656,14 +659,15 @@ export function CoWorkingCenterVideoHub({
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
           <Button
             size="small"
             variant="contained"
             onClick={onToggleMic}
             startIcon={myMic ? <MicRoundedIcon /> : <MicOffRoundedIcon />}
             sx={{
-              borderRadius: 2,
+              borderRadius: '8px',
+              whiteSpace: 'nowrap',
               fontSize: '0.74rem',
               fontWeight: 700,
               textTransform: 'none',
@@ -686,7 +690,8 @@ export function CoWorkingCenterVideoHub({
             onClick={onToggleCam}
             startIcon={myCam ? <VideocamRoundedIcon /> : <VideocamOffRoundedIcon />}
             sx={{
-              borderRadius: 2,
+              borderRadius: '8px',
+              whiteSpace: 'nowrap',
               fontSize: '0.74rem',
               fontWeight: 700,
               textTransform: 'none',
